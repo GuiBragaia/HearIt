@@ -46,7 +46,7 @@ function matchesQuery(name: string, query: string) {
 
 export async function searchArtists(query: string): Promise<ArtistHit[]> {
   const term = query.trim()
-  const local = artists
+  const local: ArtistHit[] = artists
     .filter((artist) => !term || artist.name.toLowerCase().includes(term.toLowerCase()))
     .slice(0, 12)
     .map((artist) => ({ id: artist.id, name: artist.name }))
@@ -58,7 +58,7 @@ export async function searchArtists(query: string): Promise<ArtistHit[]> {
     cachedJson(`https://api.deezer.com/search/artist?q=${encodeURIComponent(term)}&limit=12`),
   ])
 
-  const apple =
+  const apple: ArtistHit[] =
     itunes.status === 'fulfilled'
       ? ((itunes.value as ItunesArtist[]) ?? [])
           .filter((row) => {
@@ -72,7 +72,7 @@ export async function searchArtists(query: string): Promise<ArtistHit[]> {
           }))
       : []
 
-  const dzRows =
+  const dzRows: ArtistHit[] =
     deezer.status === 'fulfilled'
       ? (((deezer.value as { data?: DeezerArtist[] }).data ?? []) as DeezerArtist[])
           .filter((row) => row.name && isBandOrSinger(row.name) && matchesQuery(row.name, term))

@@ -1,7 +1,10 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 
 export function supabaseUrl() {
-  return process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() ?? ''
+  const raw = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() ?? ''
+  if (!raw) return ''
+  if (/^https?:\/\//i.test(raw)) return raw.replace(/\/$/, '')
+  return `https://${raw.replace(/\/$/, '')}`
 }
 
 export function supabaseAnonKey() {
