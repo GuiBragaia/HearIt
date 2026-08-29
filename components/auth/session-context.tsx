@@ -22,6 +22,7 @@ import {
 } from '@/lib/db'
 import { isOauthMessage, markOauthPopup, OAUTH_SOURCE } from '@/lib/oauth'
 import { getSupabase, isSupabaseConfigured } from '@/lib/supabase'
+import { claimGuestDailyRun } from '@/lib/daily-run'
 
 type AuthError =
   | 'name'
@@ -59,7 +60,11 @@ type SessionValue = {
 const SessionContext = createContext<SessionValue | null>(null)
 
 async function hydrate(userId: string, email: string) {
-  return waitForSessionUser(userId, email)
+  const next = await waitForSessionUser(userId, email)
+  if (!next) return null
+  const claimed = await claimGuestDailyRun(userId)
+  if (!claimed) return next
+  return (await loadSessionUser(userId, email)) ?? next
 }
 
 function waitForOauthPopup(db: NonNullable<ReturnType<typeof getSupabase>>, popup: Window) {
@@ -231,9 +236,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         }
         if (!data.user) return 'missing'
         if (!data.session) return 'confirm'
-        void hydrate(data.user.id, data.user.email ?? email).then((next) => {
-          if (next) setUser(next)
-        })
+        const next = await hydrate(data.user.id, data.user.email ?? email)
+        if (next) setUser(next)
         return null
       },
       login: async ({ email, password }) => {
@@ -246,9 +250,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
           password,
         })
         if (error || !data.user) return 'login'
-        void hydrate(data.user.id, data.user.email ?? email).then((next) => {
-          if (next) setUser(next)
-        })
+        const next = await hydrate(data.user.id, data.user.email ?? email)
+        if (next) setUser(next)
         return null
       },
       joinWith: async (provider, popup) => {

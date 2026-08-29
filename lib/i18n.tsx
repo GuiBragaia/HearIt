@@ -131,7 +131,7 @@ const en = {
     beatPct: 'Ahead of',
     ofPlayers: 'playing today',
     streak: 'day streak',
-    guestNudge: 'Create an account to keep the streak and show up on the board.',
+    guestNudge: 'Create an account and this score stays yours — streak, board, all of it.',
     keepGoing: 'Keep this score',
   },
   share: {
@@ -178,6 +178,8 @@ const en = {
     mon: 'Mon',
     sun: 'Sun',
     member: 'Here since',
+    dev: 'Dev',
+    devHint: '0.1s was my idea. Sorry.',
     week: 'Last few days',
     listening: 'Still going',
     guestTitle: 'Guest',
@@ -441,7 +443,7 @@ const pt: Dictionary = {
     beatPct: 'Na frente de',
     ofPlayers: 'jogando hoje',
     streak: 'dias seguidos',
-    guestNudge: 'Cria uma conta para guardar a sequência e aparecer no placar.',
+    guestNudge: 'Cria uma conta e essa pontuação fica sua — sequência, placar, tudo.',
     keepGoing: 'Guardar essa pontuação',
   },
   share: {
@@ -488,6 +490,8 @@ const pt: Dictionary = {
     mon: 'Seg',
     sun: 'Dom',
     member: 'Por aqui desde',
+    dev: 'Dev',
+    devHint: 'O 0.1s foi ideia minha. Foi mal.',
     week: 'Últimos dias',
     listening: 'Seguindo',
     guestTitle: 'Convidado',
@@ -643,11 +647,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const saved = window.localStorage.getItem(STORAGE_KEY)
-    if (saved === 'en' || saved === 'pt') {
-      setLocaleState(saved)
-      return
-    }
-    if (navigator.language.toLowerCase().startsWith('pt')) setLocaleState('pt')
+    if (saved === 'en' || saved === 'pt') setLocaleState(saved)
   }, [])
 
   useEffect(() => {

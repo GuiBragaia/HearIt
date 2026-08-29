@@ -2086,6 +2086,13 @@ button:disabled {
   min-width: 0;
 }
 
+.profile-title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
 .profile-title {
   margin: 0;
   font-family: var(--font-display);
@@ -2094,6 +2101,73 @@ button:disabled {
   letter-spacing: -0.055em;
   line-height: 1.12;
   overflow-wrap: anywhere;
+}
+
+.dev-badge {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: var(--primary);
+  color: #11150c;
+  font-size: 10px;
+  font-weight: 700;
+  font-style: normal;
+  letter-spacing: 0.14em;
+  line-height: 1;
+  text-transform: uppercase;
+  cursor: default;
+  outline: none;
+  transition:
+    background 0.35s ease,
+    box-shadow 0.35s ease;
+}
+
+.dev-badge.is-hot,
+.dev-badge:focus-visible {
+  z-index: 6;
+  background: #e8f7a8;
+  box-shadow:
+    0 0 0 1px rgba(232, 247, 168, 0.28),
+    0 8px 20px rgba(200, 243, 90, 0.22);
+}
+
+.dev-badge-tip {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 9px);
+  z-index: 8;
+  width: max-content;
+  padding: 7px 11px;
+  border: 1px solid rgba(200, 243, 90, 0.28);
+  border-radius: 2px;
+  background: #0c100b;
+  color: var(--primary);
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 500;
+  letter-spacing: -0.03em;
+  line-height: 1.2;
+  text-transform: none;
+  white-space: nowrap;
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.55);
+  pointer-events: none;
+}
+
+.dev-badge.is-compact {
+  height: 16px;
+  padding: 0 6px;
+  font-size: 9px;
+  letter-spacing: 0.12em;
+}
+
+.dev-badge.is-compact .dev-badge-tip {
+  font-size: 12px;
+  padding: 6px 10px;
 }
 
 .profile-name-meta {
@@ -2644,11 +2718,17 @@ span.profile-edit {
 }
 
 .profile-friend strong {
-  display: block;
-  overflow: hidden;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow: visible;
   font-size: 15px;
   font-weight: 550;
   letter-spacing: -0.03em;
+}
+
+.profile-friend strong span {
+  overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -4505,5 +4585,14 @@ span.profile-edit {
     animation: none !important;
     filter: none !important;
     transform: none !important;
+  }
+
+  .dev-badge,
+  .dev-badge-tip {
+    transition: none !important;
+  }
+
+  .dev-badge-tip {
+    transform: translateX(-50%) !important;
   }
 }

@@ -12,11 +12,22 @@ import { fetchPeople, fetchPerson, searchPeople } from '@/lib/db'
 import { profileHref, type Person } from '@/lib/people'
 import { HearLoading } from '@/components/states/HearLoading'
 import { useI18n } from '@/lib/i18n'
+import { isGameDev } from '@/lib/session'
 import { cn } from '@/lib/utils'
+import { DevBadge } from './DevBadge'
 
 const HEAR_HOLD = 640
 const HEAR_FLASH = 1500
 const GONE_HOLD = 1560
+
+function PersonTitle({ name, handle }: { name: string; handle: string }) {
+  return (
+    <strong>
+      <span>{name || handle}</span>
+      {isGameDev(handle) ? <DevBadge compact /> : null}
+    </strong>
+  )
+}
 
 function FriendHear() {
   return (
@@ -300,7 +311,7 @@ export function FriendsList() {
                 <Link href={profileHref(person.handle)} prefetch={false} className="profile-friend-id">
                   <Avatar src={person.photo} initials={person.initials} size="sm" />
                   <span className="min-w-0">
-                    <strong>{person.name || person.handle}</strong>
+                    <PersonTitle name={person.name} handle={person.handle} />
                     <b>{person.handle}</b>
                   </span>
                 </Link>
@@ -322,7 +333,7 @@ export function FriendsList() {
                     <Link href={profileHref(person.handle)} prefetch={false} className="profile-friend-id">
                       <FriendEar person={person} heard={hearing} />
                       <span className="min-w-0">
-                        <strong>{person.name}</strong>
+                        <PersonTitle name={person.name} handle={person.handle} />
                         <b>{hearing ? t.profile.friendsWith : t.profile.friendAsk}</b>
                       </span>
                     </Link>
@@ -359,7 +370,7 @@ export function FriendsList() {
                   <Link href={profileHref(person.handle)} prefetch={false} className="profile-friend-id">
                     <Avatar src={person.photo} initials={person.initials} size="sm" />
                     <span className="min-w-0">
-                      <strong>{person.name}</strong>
+                      <PersonTitle name={person.name} handle={person.handle} />
                       <b>{person.handle}</b>
                     </span>
                   </Link>
@@ -388,7 +399,7 @@ export function FriendsList() {
                     <Link href={profileHref(person.handle)} prefetch={false} className="profile-friend-id">
                       <FriendEar person={person} gone={leaving} />
                       <span className="min-w-0">
-                        <strong>{person.name}</strong>
+                        <PersonTitle name={person.name} handle={person.handle} />
                         <b>{leaving ? t.profile.friendGone : person.handle}</b>
                       </span>
                     </Link>

@@ -8,9 +8,10 @@ import { formatDuration } from '@/lib/game'
 import { type LeaderboardRow } from '@/lib/mock'
 import { useSession } from '@/components/auth/session-context'
 import { Avatar } from '@/components/profile/Avatar'
+import { DevBadge } from '@/components/profile/DevBadge'
 import { profileHref } from '@/lib/people'
 import { loadLeaderboard } from '@/lib/db'
-import { profileTitle } from '@/lib/session'
+import { isGameDev, profileTitle } from '@/lib/session'
 import { HearLoading } from '@/components/states/HearLoading'
 import { useI18n } from '@/lib/i18n'
 import { cn, formatNumber } from '@/lib/utils'
@@ -212,7 +213,10 @@ function PodiumCard({
         {String(place).padStart(2, '0')}
       </p>
       <Avatar src={photo} initials={initials} size={first ? 'lg' : 'md'} className="mt-5" />
-      <p className="mt-4 mb-1 text-[15px] tracking-tight">{row.name}</p>
+      <p className="mt-4 mb-1 flex items-center gap-2 text-[15px] tracking-tight">
+        <span className="truncate">{row.name}</span>
+        {isGameDev(row.handle) ? <DevBadge compact /> : null}
+      </p>
       <p className="display m-0 text-[28px]">{formatNumber(row.score, locale)}</p>
       <p className="mt-2 mb-0 flex items-center gap-3 text-xs text-[#7a8273]">
         <span>{formatDuration(row.time)}</span>

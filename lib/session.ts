@@ -46,6 +46,13 @@ export function usernameFromHandle(handle: string) {
   return handle.replace(/^@/, '').toLowerCase()
 }
 
+const DEV_HANDLES = new Set(['gui'])
+
+export function isGameDev(handle?: string | null) {
+  if (!handle) return false
+  return DEV_HANDLES.has(usernameFromHandle(handle))
+}
+
 export function initialsFromName(name: string) {
   const parts = cleanName(name).split(' ').filter(Boolean)
   if (parts.length === 0) return 'HI'
