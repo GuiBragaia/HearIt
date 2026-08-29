@@ -1,8 +1,9 @@
-import { Analytics } from '@vercel/analytics/next'
 import type { Metadata, Viewport } from 'next'
+import { Analytics } from '@vercel/analytics/next'
 import { Geist_Mono, Inter, Space_Grotesk } from 'next/font/google'
 import './globals.css'
 import { Providers } from './providers'
+import { rootMetadata } from '@/lib/seo'
 
 const inter = Inter({
   subsets: ['latin'],
@@ -19,14 +20,13 @@ const mono = Geist_Mono({
   variable: '--font-geist-mono',
 })
 
-export const metadata: Metadata = {
-  title: 'Hear It',
-  description: 'Guess the song from a tiny clip. A new one every day.',
-}
+export const metadata: Metadata = rootMetadata()
 
 export const viewport: Viewport = {
   colorScheme: 'dark',
   themeColor: '#070807',
+  width: 'device-width',
+  initialScale: 1,
 }
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

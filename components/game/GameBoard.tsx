@@ -8,6 +8,7 @@ import { Waveform } from '@/components/audio/Waveform'
 import { useTrackPlayer } from '@/components/audio/use-track-player'
 import { usePlaying } from '@/components/layout/playing-context'
 import { QuietError } from '@/components/states/QuietError'
+import { HearLoading } from '@/components/states/HearLoading'
 import {
   CLIP_LENGTHS,
   dailyKey,
@@ -219,7 +220,7 @@ export function GameBoard() {
   }, [player.stop, setFeel, setPlaying])
 
   if (boot) {
-    return <section className="daily-screen" aria-hidden />
+    return <HearLoading />
   }
 
   if (error) {

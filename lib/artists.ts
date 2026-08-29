@@ -54,8 +54,38 @@ export const artists: Artist[] = [
 
 const byId = new Map(artists.map((artist) => [artist.id, artist]))
 
+export function slugifyArtist(name: string) {
+  return name
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 48)
+}
+
+function unslugArtist(id: string) {
+  return id
+    .split('-')
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ')
+}
+
+export function artistFromToken(token: string): Artist | null {
+  const trimmed = token.trim()
+  if (!trimmed) return null
+  const curated =
+    byId.get(trimmed) ?? artists.find((artist) => artist.name.toLowerCase() === trimmed.toLowerCase())
+  if (curated) return curated
+  const id = slugifyArtist(trimmed)
+  if (!id) return null
+  const name = trimmed !== id && /[A-Za-zÀ-ÿ]/.test(trimmed) ? trimmed : unslugArtist(id)
+  return { id, name }
+}
+
 export function artistById(id: string) {
-  return byId.get(id) ?? null
+  return artistFromToken(id)
 }
 
 export function sanitizeFavoriteIds(raw: unknown) {
@@ -63,12 +93,10 @@ export function sanitizeFavoriteIds(raw: unknown) {
   const seen = new Set<string>()
   const next: string[] = []
   for (const item of raw) {
-    const token = String(item)
-    const match =
-      byId.get(token) ?? artists.find((artist) => artist.name.toLowerCase() === token.toLowerCase())
+    const match = artistFromToken(String(item))
     if (!match || seen.has(match.id)) continue
     seen.add(match.id)
-    next.push(match.id)
+    next.push(byId.has(match.id) ? match.id : match.name)
     if (next.length === 3) break
   }
   return next

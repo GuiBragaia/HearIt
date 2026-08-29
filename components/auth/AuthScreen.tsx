@@ -1,16 +1,18 @@
 'use client'
 
-import { useEffect, useId, useState, type ReactNode } from 'react'
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Eye, EyeOff } from 'lucide-react'
 import { ViewportWaveform } from '@/components/audio/ViewportWaveform'
 import { AuthHello, type AuthHelloKind } from '@/components/auth/AuthHello'
+import { AuthOauthWait } from '@/components/auth/AuthOauthWait'
 import { useSession } from '@/components/auth/session-context'
 import { LogoMark } from '@/components/layout/Logo'
 import { pickOffensiveLine, useI18n } from '@/lib/i18n'
-import { profileTitle } from '@/lib/session'
-import { loadSessionUser } from '@/lib/db'
+import { oauthHelloKind, openOauthPopup } from '@/lib/oauth'
+import { handleFromUsername, profileTitle } from '@/lib/session'
+import { waitForSessionUser } from '@/lib/db'
 import { getSupabase } from '@/lib/supabase'
 import { cn } from '@/lib/utils'
 
@@ -29,16 +31,25 @@ export function AuthScreen({ mode }: { mode: 'join' | 'login' }) {
   const [error, setError] = useState<string | null>(null)
   const [errorField, setErrorField] = useState<AuthFieldName | null>(null)
   const [hello, setHello] = useState<HelloState | null>(null)
+  const [socialBusy, setSocialBusy] = useState(false)
+  const [formBusy, setFormBusy] = useState(false)
+  const [created, setCreated] = useState(false)
+  const [oauthWait, setOauthWait] = useState<'apple' | 'google' | null>(null)
+  const oauthPopup = useRef<Window | null>(null)
   const uid = useId()
 
   useEffect(() => {
-    if (user && !hello) router.replace('/profile')
-  }, [user, hello, router])
+    if (user && !hello && !socialBusy && !formBusy) router.replace('/profile')
+  }, [user, hello, router, socialBusy, formBusy])
 
   useEffect(() => {
     setError(null)
     setErrorField(null)
     setShowPassword(false)
+    setSocialBusy(false)
+    setFormBusy(false)
+    setCreated(false)
+    setOauthWait(null)
   }, [mode])
 
   const fail = (result: NonNullable<Awaited<ReturnType<typeof join>>>) => {
@@ -53,6 +64,10 @@ export function AuthScreen({ mode }: { mode: 'join' | 'login' }) {
       login: t.auth.errorLogin,
       config: t.auth.errorConfig,
       confirm: t.auth.errorConfirm,
+      oauth: t.auth.errorOAuth,
+      closed: t.auth.oauthCancel,
+      taken: t.auth.errorTaken,
+      rate: t.auth.errorRate,
     }
     const fields: Record<typeof result, AuthFieldName | null> = {
       name: 'username',
@@ -65,10 +80,19 @@ export function AuthScreen({ mode }: { mode: 'join' | 'login' }) {
       login: 'email',
       config: null,
       confirm: 'email',
+      oauth: null,
+      closed: null,
+      taken: 'username',
+      rate: 'email',
     }
     setError(messages[result])
     setErrorField(fields[result])
   }
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    if (new URLSearchParams(window.location.search).get('oauth')) fail('oauth')
+  }, [mode])
 
   const write = (field: AuthFieldName, next: string) => {
     if (field === 'username') setUsername(next.replace(/^@+/, ''))
@@ -81,35 +105,79 @@ export function AuthScreen({ mode }: { mode: 'join' | 'login' }) {
     }
   }
 
-  const greet = async (kind: AuthHelloKind) => {
+  const greet = async (kind: AuthHelloKind, fallback?: { name: string; handle: string }) => {
     const db = getSupabase()
     const authUser = db ? (await db.auth.getUser()).data.user : null
-    const account = authUser ? await loadSessionUser(authUser.id, authUser.email ?? '') : null
-    if (!account) {
-      router.push('/profile')
+    const account = authUser ? await waitForSessionUser(authUser.id, authUser.email ?? '') : null
+    if (account) {
+      setHello({
+        kind,
+        name: profileTitle(account),
+        handle: account.handle,
+      })
       return
     }
-    setHello({
-      kind,
-      name: profileTitle(account),
-      handle: account.handle,
-    })
+    if (fallback) {
+      setHello({
+        kind,
+        name: fallback.name,
+        handle: fallback.handle,
+      })
+      return
+    }
+    router.push('/profile')
   }
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault()
+    if (formBusy || socialBusy) return
+    setFormBusy(true)
+    setError(null)
+    setErrorField(null)
     const result =
       mode === 'join' ? await join({ username, displayName, email, password }) : await login({ email, password })
+    if (result === 'confirm') {
+      setCreated(true)
+      setFormBusy(false)
+      return
+    }
     if (result) {
+      setFormBusy(false)
       fail(result)
       return
     }
-    await greet(mode)
+    const handle = username ? handleFromUsername(username) : `@${email.split('@')[0] || 'player'}`
+    await greet(mode, {
+      name: displayName.trim() || handle,
+      handle,
+    })
+    setFormBusy(false)
   }
 
   const social = async (provider: 'apple' | 'google') => {
-    const result = await joinWith(provider)
-    if (result) fail(result)
+    if (socialBusy || formBusy) return
+    const popup = openOauthPopup(provider)
+    oauthPopup.current = popup
+    setSocialBusy(true)
+    if (popup && !popup.closed) setOauthWait(provider)
+    const result = await joinWith(provider, popup)
+    oauthPopup.current = null
+    if (result === 'closed') {
+      setOauthWait(null)
+      setSocialBusy(false)
+      return
+    }
+    if (result) {
+      setOauthWait(null)
+      setSocialBusy(false)
+      fail(result)
+      return
+    }
+    setOauthWait(null)
+    const db = getSupabase()
+    const authUser = db ? (await db.auth.getUser()).data.user : null
+    await greet(authUser ? oauthHelloKind(authUser) : mode)
+    setSocialBusy(false)
   }
 
   return (
@@ -148,11 +216,11 @@ export function AuthScreen({ mode }: { mode: 'join' | 'login' }) {
 
         <div className="auth-panel">
           <div className="enter enter-4 auth-social">
-            <button type="button" className="auth-apple" onClick={() => social('apple')}>
+            <button type="button" className="auth-apple" disabled={socialBusy || formBusy} onClick={() => social('apple')}>
               <AppleMark />
               {t.auth.continueApple}
             </button>
-            <button type="button" className="auth-google" onClick={() => social('google')}>
+            <button type="button" className="auth-google" disabled={socialBusy || formBusy} onClick={() => social('google')}>
               <GoogleMark />
               {t.auth.continueGoogle}
             </button>
@@ -162,6 +230,16 @@ export function AuthScreen({ mode }: { mode: 'join' | 'login' }) {
             <span>{t.auth.orEmail}</span>
           </p>
 
+          {created ? (
+            <div className="enter enter-4 auth-created">
+              <p className="auth-created-kicker">{t.auth.createdKicker}</p>
+              <h2 className="auth-created-title">{t.auth.createdTitle}</h2>
+              <p className="auth-created-lead">{t.auth.createdLead}</p>
+              <Link href="/login" className="land-play auth-submit no-underline">
+                {t.auth.signIn}
+              </Link>
+            </div>
+          ) : (
           <form className="enter enter-6 auth-form" onSubmit={submit}>
             <div className="auth-fields">
               {mode === 'join' ? (
@@ -230,10 +308,17 @@ export function AuthScreen({ mode }: { mode: 'join' | 'login' }) {
               ) : null}
             </div>
             {error ? <p className="auth-error">{error}</p> : null}
-            <button type="submit" className="land-play auth-submit">
-              {mode === 'join' ? t.auth.submit : t.auth.loginSubmit}
+            <button type="submit" className="land-play auth-submit" disabled={formBusy || socialBusy}>
+              {formBusy
+                ? mode === 'join'
+                  ? t.auth.creating
+                  : t.auth.signingIn
+                : mode === 'join'
+                  ? t.auth.submit
+                  : t.auth.loginSubmit}
             </button>
           </form>
+          )}
 
           <div className="enter enter-7 auth-links">
             <Link href="/daily">{t.auth.playFree}</Link>
@@ -250,6 +335,13 @@ export function AuthScreen({ mode }: { mode: 'join' | 'login' }) {
         </div>
       </div>
 
+      <AuthOauthWait
+        open={Boolean(oauthWait)}
+        provider={oauthWait}
+        onCancel={() => {
+          oauthPopup.current?.close()
+        }}
+      />
       <AuthHello
         open={Boolean(hello)}
         kind={hello?.kind ?? 'login'}

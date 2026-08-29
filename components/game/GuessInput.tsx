@@ -1,8 +1,8 @@
 'use client'
 
-import { useMemo, useState } from 'react'
-import { catalog, type Song } from '@/lib/mock'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { normalizeGuess } from '@/lib/game'
+import { catalogHits, type GuessHit } from '@/lib/guess-search'
 import { useI18n } from '@/lib/i18n'
 
 function escapeRegExp(value: string) {
@@ -19,41 +19,29 @@ function Marked({ text, query }: { text: string; query: string }) {
   )
 }
 
-const SUGGEST_MIN = 3
-
-function wordsOf(value: string) {
-  return value.split(' ').filter(Boolean)
+function GuessArt({ src }: { src?: string | null }) {
+  const [broken, setBroken] = useState(false)
+  useEffect(() => {
+    setBroken(false)
+  }, [src])
+  if (!src || broken) return <i className="guess-art is-empty" aria-hidden />
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      className="guess-art"
+      src={src}
+      alt=""
+      width={36}
+      height={36}
+      loading="lazy"
+      decoding="async"
+      referrerPolicy="no-referrer"
+      onError={() => setBroken(true)}
+    />
+  )
 }
 
-function startsAWord(hay: string, query: string) {
-  return wordsOf(hay).some((word) => word.startsWith(query))
-}
-
-function matchScore(song: Song, query: string) {
-  if (query.length < SUGGEST_MIN) return 0
-
-  const title = normalizeGuess(song.title)
-  const artist = normalizeGuess(song.artist)
-  const aliases = song.aliases.map(normalizeGuess)
-  const hay = `${title} ${artist}`
-  let score = 0
-
-  if (title === query || aliases.includes(query)) score += 8
-  if (title.startsWith(query)) score += 5
-  if (startsAWord(title, query)) score += 4
-  if (startsAWord(artist, query) || artist.startsWith(query)) score += 4
-
-  if (query.length >= 4) {
-    if (title.includes(query)) score += 2
-    if (artist.includes(query)) score += 2
-    if (aliases.some((alias) => alias.includes(query) || startsAWord(alias, query))) score += 2
-  }
-
-  const parts = wordsOf(query)
-  if (parts.length > 1 && parts.every((part) => startsAWord(hay, part) || hay.includes(part))) score += 3
-
-  return score
-}
+const SUGGEST_MIN = 2
 
 export function GuessInput({
   value,
@@ -69,20 +57,52 @@ export function GuessInput({
   const { t } = useI18n()
   const [open, setOpen] = useState(false)
   const [highlight, setHighlight] = useState(0)
+  const [remote, setRemote] = useState<GuessHit[]>([])
+  const queryId = useRef(0)
+
+  const local = useMemo(() => catalogHits(value), [value])
 
   const suggestions = useMemo(() => {
-    const query = normalizeGuess(value)
-    if (query.length < SUGGEST_MIN) return [] as Song[]
-    return catalog
-      .map((song) => ({ song, score: matchScore(song, query) }))
-      .filter((item) => item.score > 0)
-      .sort((a, b) => b.score - a.score || a.song.title.localeCompare(b.song.title))
-      .slice(0, 6)
-      .map((item) => item.song)
+    const needle = normalizeGuess(value)
+    const seen = new Set<string>()
+    const out: GuessHit[] = []
+    const remoteFit = remote.filter(
+      (hit) =>
+        needle.length < SUGGEST_MIN ||
+        normalizeGuess(hit.title).includes(needle) ||
+        normalizeGuess(hit.artist).includes(needle),
+    )
+    for (const hit of [...local, ...remoteFit]) {
+      const key = `${normalizeGuess(hit.title)}:${normalizeGuess(hit.artist)}`
+      if (seen.has(key)) continue
+      seen.add(key)
+      out.push(hit)
+    }
+    return out.slice(0, 16)
+  }, [local, remote, value])
+
+  useEffect(() => {
+    const query = value.trim()
+    if (query.length < SUGGEST_MIN) {
+      setRemote([])
+      return
+    }
+    const id = (queryId.current += 1)
+    const timer = window.setTimeout(() => {
+      void fetch(`/api/guess?q=${encodeURIComponent(query)}`)
+        .then((response) => response.json())
+        .then((data: { hits?: GuessHit[] }) => {
+          if (id === queryId.current) setRemote(data.hits ?? [])
+        })
+        .catch(() => {
+          if (id !== queryId.current) return
+        })
+    }, 140)
+    return () => window.clearTimeout(timer)
   }, [value])
 
-  const pick = (song: Song) => {
-    onChange(song.title)
+  const pick = (hit: GuessHit) => {
+    onSubmit(hit.title)
     setOpen(false)
   }
 
@@ -129,8 +149,8 @@ export function GuessInput({
                 setHighlight((current) => Math.max(current - 1, 0))
               } else if (event.key === 'Enter' && !event.nativeEvent.isComposing) {
                 event.preventDefault()
-                const song = suggestions[highlight]
-                if (song) onSubmit(song.title)
+                const hit = suggestions[highlight]
+                if (hit) pick(hit)
               } else if (event.key === 'Escape') {
                 setOpen(false)
               }
@@ -148,23 +168,27 @@ export function GuessInput({
         </div>
         {showList ? (
           <ul id="guess-list" className="guess-list" role="listbox">
-            {suggestions.map((song, index) => (
-              <li key={song.id}>
+            {suggestions.map((hit, index) => (
+              <li key={hit.id}>
                 <button
                   type="button"
                   role="option"
                   aria-selected={index === highlight}
                   onMouseDown={(event) => event.preventDefault()}
                   onMouseEnter={() => setHighlight(index)}
-                  onClick={() => pick(song)}
+                  onClick={() => pick(hit)}
                   className={index === highlight ? 'is-on' : undefined}
                 >
-                  <span>
-                    <Marked text={song.title} query={value} />
+                  <GuessArt src={hit.artwork} />
+                  <span className="guess-copy">
+                    <span>
+                      <Marked text={hit.title} query={value} />
+                    </span>
+                    <small>
+                      <Marked text={hit.artist} query={value} />
+                      {hit.album ? ` · ${hit.album}` : null}
+                    </small>
                   </span>
-                  <small>
-                    <Marked text={song.artist} query={value} />
-                  </small>
                 </button>
               </li>
             ))}

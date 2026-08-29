@@ -11,6 +11,7 @@ import { Avatar } from '@/components/profile/Avatar'
 import { profileHref } from '@/lib/people'
 import { loadLeaderboard } from '@/lib/db'
 import { profileTitle } from '@/lib/session'
+import { HearLoading } from '@/components/states/HearLoading'
 import { useI18n } from '@/lib/i18n'
 import { cn, formatNumber } from '@/lib/utils'
 import { LeaderboardRowItem } from './LeaderboardRow'
@@ -24,6 +25,7 @@ export function Leaderboard() {
   const [board, setBoard] = useState<Board>('global')
   const [range, setRange] = useState<Range>('week')
   const [rows, setRows] = useState<LeaderboardRow[]>([])
+  const [loading, setLoading] = useState(true)
 
   const boards: Array<{ id: Board; label: string }> = [
     { id: 'global', label: t.leaderboard.global },
@@ -38,15 +40,23 @@ export function Leaderboard() {
   useEffect(() => {
     if (!ready) return
     let live = true
-    void loadLeaderboard(range, board, user?.id, user?.friends ?? []).then((next) => {
-      if (!live) return
-      setRows(
-        next.map((row) => ({
-          ...row,
-          name: row.you && user ? profileTitle(user) : row.name,
-        })),
-      )
-    })
+    setLoading(true)
+    void loadLeaderboard(range, board, user?.id, user?.friends ?? [])
+      .then((next) => {
+        if (!live) return
+        setRows(
+          next.map((row) => ({
+            ...row,
+            name: row.you && user ? profileTitle(user) : row.name,
+          })),
+        )
+      })
+      .catch(() => {
+        if (live) setRows([])
+      })
+      .finally(() => {
+        if (live) setLoading(false)
+      })
     return () => {
       live = false
     }
@@ -69,7 +79,7 @@ export function Leaderboard() {
       <div className="enter enter-1 mb-10 flex flex-wrap items-end justify-between gap-4">
         <h1 className="display m-0 text-[clamp(40px,7vw,72px)]">{t.leaderboard.title}</h1>
         <p className="m-0 mb-1 text-sm text-muted-foreground">
-          {formatNumber(rows.length, locale)} · {t.leaderboard.field}
+          {loading ? '\u00a0' : `${formatNumber(rows.length, locale)} · ${t.leaderboard.field}`}
         </p>
       </div>
 
@@ -106,7 +116,9 @@ export function Leaderboard() {
         </div>
       </div>
 
-      {empty ? (
+      {loading ? (
+        <HearLoading variant="block" />
+      ) : empty ? (
         <div className="py-24 text-center enter enter-3">
           <p className="display m-0 text-4xl">{t.leaderboard.empty}</p>
           <p className="mt-3 text-sm text-muted-foreground">
@@ -153,7 +165,7 @@ export function Leaderboard() {
         </>
       )}
 
-      {you && usePodium && youIndex >= 3 ? (
+      {you && !loading && usePodium && youIndex >= 3 ? (
         <div className="sticky bottom-20 z-10 mt-8 md:bottom-6">
           <div className="enter enter-8 border border-primary/30 bg-[#0c0f0b]/95 px-4 py-3 backdrop-blur-md">
             <p className="mb-1 text-xs text-primary">{t.leaderboard.youLabel}</p>

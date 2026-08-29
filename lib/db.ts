@@ -1,6 +1,7 @@
 import { dailyKey } from '@/lib/game'
 import { emptyStats, personFromRow, statsFromRow, type Person } from '@/lib/people'
 import { sanitizeFavoriteIds } from '@/lib/artists'
+import { displayNameFromOauth, photoFromOauth } from '@/lib/oauth'
 import {
   initialsFromName,
   type SessionUser,
@@ -142,6 +143,26 @@ export async function loadSessionUser(userId: string, email: string) {
   const [row, lists] = await Promise.all([fetchProfileRow(userId), loadFriendLists(userId)])
   if (!row) return null
   return sessionFromProfile(row, email, lists)
+}
+
+export async function waitForSessionUser(userId: string, email: string) {
+  for (let i = 0; i < 12; i += 1) {
+    const profile = await loadSessionUser(userId, email)
+    if (profile) return profile
+    await new Promise((resolve) => setTimeout(resolve, 200 * (i + 1)))
+  }
+  return null
+}
+
+export async function applyOauthProfile(userId: string, meta: Record<string, unknown> | undefined) {
+  const row = await fetchProfileRow(userId)
+  if (!row) return null
+  const fromOauth = displayNameFromOauth(meta)
+  const stored = row.display_name?.trim() ?? ''
+  const name = !stored || stored.startsWith('{') ? fromOauth || stored : stored
+  const photo = row.photo_url || photoFromOauth(meta) || null
+  if (name === (row.display_name ?? '') && photo === row.photo_url) return row
+  return patchProfile(userId, { display_name: name, photo_url: photo })
 }
 
 export async function requestFriend(userId: string, targetId: string) {

@@ -10,6 +10,7 @@ import { FriendRemoveConfirm } from '@/components/profile/FriendRemoveConfirm'
 import { friendStatus } from '@/lib/friends'
 import { fetchPeople, fetchPerson, searchPeople } from '@/lib/db'
 import { profileHref, type Person } from '@/lib/people'
+import { HearLoading } from '@/components/states/HearLoading'
 import { useI18n } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
 
@@ -215,6 +216,7 @@ export function FriendsList() {
   const [sent, setSent] = useState<Person[]>([])
   const [query, setQuery] = useState('')
   const [hits, setHits] = useState<Person[]>([])
+  const [loading, setLoading] = useState(true)
   const grouped = asks.length > 0 || sent.length > 0
 
   const friendKey = useMemo(
@@ -227,17 +229,27 @@ export function FriendsList() {
       setFriends([])
       setAsks([])
       setSent([])
+      setLoading(false)
       return
     }
     let live = true
-    void Promise.all([fetchPeople(user.friends), fetchPeople(user.incoming), fetchPeople(user.outgoing)]).then(
-      ([nextFriends, nextAsks, nextSent]) => {
+    setLoading(true)
+    void Promise.all([fetchPeople(user.friends), fetchPeople(user.incoming), fetchPeople(user.outgoing)])
+      .then(([nextFriends, nextAsks, nextSent]) => {
         if (!live) return
         setFriends(nextFriends)
         setAsks(nextAsks)
         setSent(nextSent)
-      },
-    )
+      })
+      .catch(() => {
+        if (!live) return
+        setFriends([])
+        setAsks([])
+        setSent([])
+      })
+      .finally(() => {
+        if (live) setLoading(false)
+      })
     return () => {
       live = false
     }
@@ -276,6 +288,10 @@ export function FriendsList() {
         placeholder={t.profile.findFriendPh}
         aria-label={t.profile.findFriend}
       />
+      {loading ? (
+        <HearLoading variant="inline" />
+      ) : (
+        <>
       {hits.length > 0 ? (
         <ul className="profile-friends-list">
           {hits.map((person) => (
@@ -384,6 +400,8 @@ export function FriendsList() {
           </ul>
         </>
       ) : null}
+        </>
+      )}
     </div>
   )
 }

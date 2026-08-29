@@ -12,12 +12,15 @@ import {
 import { friendStatus } from '@/lib/friends'
 import {
   acceptFriend as acceptRemote,
+  applyOauthProfile,
   dropFriendship,
   loadSessionUser,
   patchProfile,
   requestFriend as requestRemote,
   uploadAvatar,
+  waitForSessionUser,
 } from '@/lib/db'
+import { isOauthMessage, markOauthPopup, OAUTH_SOURCE } from '@/lib/oauth'
 import { getSupabase, isSupabaseConfigured } from '@/lib/supabase'
 
 type AuthError =
@@ -31,6 +34,10 @@ type AuthError =
   | 'login'
   | 'config'
   | 'confirm'
+  | 'oauth'
+  | 'closed'
+  | 'taken'
+  | 'rate'
 
 type SessionValue = {
   user: SessionUser | null
@@ -38,7 +45,7 @@ type SessionValue = {
   configured: boolean
   join: (input: { username: string; displayName: string; email: string; password: string }) => Promise<AuthError | null>
   login: (input: { email: string; password: string }) => Promise<AuthError | null>
-  joinWith: (provider: 'apple' | 'google') => Promise<AuthError | null>
+  joinWith: (provider: 'apple' | 'google', popup?: Window | null) => Promise<AuthError | null>
   logout: () => Promise<void>
   refresh: () => Promise<void>
   updateProfile: (patch: Partial<Pick<SessionUser, 'photo' | 'favorites' | 'name'>>) => Promise<AuthError | null>
@@ -52,12 +59,84 @@ type SessionValue = {
 const SessionContext = createContext<SessionValue | null>(null)
 
 async function hydrate(userId: string, email: string) {
-  for (let i = 0; i < 6; i += 1) {
-    const profile = await loadSessionUser(userId, email)
-    if (profile) return profile
-    await new Promise((resolve) => window.setTimeout(resolve, 250 * (i + 1)))
-  }
-  return null
+  return waitForSessionUser(userId, email)
+}
+
+function waitForOauthPopup(db: NonNullable<ReturnType<typeof getSupabase>>, popup: Window) {
+  return new Promise<AuthError | null>((resolve) => {
+    let settled = false
+    let sawClosed = false
+    let channel: BroadcastChannel | undefined
+    let sub: { unsubscribe: () => void } | undefined
+
+    const finish = (result: AuthError | null) => {
+      if (settled) return
+      settled = true
+      window.removeEventListener('message', onMessage)
+      window.clearInterval(timer)
+      sub?.unsubscribe()
+      channel?.close()
+      resolve(result)
+    }
+
+    const takeSession = async (code?: string) => {
+      let { data } = await db.auth.getSession()
+      if (!data.session && code) {
+        await db.auth.exchangeCodeForSession(code)
+        data = (await db.auth.getSession()).data
+      }
+      if (data.session) finish(null)
+      else finish('oauth')
+    }
+
+    const onPayload = (data: { ok: boolean; code?: string }) => {
+      if (!data.ok) {
+        finish('oauth')
+        return
+      }
+      void takeSession(data.code)
+    }
+
+    const onMessage = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return
+      if (!isOauthMessage(event.data)) return
+      onPayload(event.data)
+    }
+
+    try {
+      channel = new BroadcastChannel(OAUTH_SOURCE)
+      channel.onmessage = (event) => {
+        if (isOauthMessage(event.data)) onPayload(event.data)
+      }
+    } catch {
+      // Ignore.
+    }
+
+    const auth = db.auth.onAuthStateChange((event, session) => {
+      if (session && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED')) {
+        finish(null)
+      }
+    })
+    sub = auth.data.subscription
+
+    window.addEventListener('message', onMessage)
+    const timer = window.setInterval(() => {
+      if (sawClosed) return
+      let closed = false
+      try {
+        closed = popup.closed
+      } catch {
+        return
+      }
+      if (!closed) return
+      sawClosed = true
+      window.setTimeout(() => {
+        void db.auth.getSession().then(({ data }) => {
+          finish(data.session ? null : 'closed')
+        })
+      }, 280)
+    }, 400)
+  })
 }
 
 export function SessionProvider({ children }: { children: ReactNode }) {
@@ -103,7 +182,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         return
       }
       void hydrate(authUser.id, authUser.email ?? '').then((next) => {
-        if (live) setUser(next)
+        if (live && next) setUser(next)
       })
     })
     return () => {
@@ -131,7 +210,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         if (password.length < 6) return 'password'
         const handle = username.trim().toLowerCase()
         const { data: taken } = await db.from('profiles').select('id').eq('handle', handle).maybeSingle()
-        if (taken) return 'name'
+        if (taken) return 'taken'
         const { data, error } = await db.auth.signUp({
           email: email.trim().toLowerCase(),
           password,
@@ -144,15 +223,18 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         })
         if (error) {
           const text = error.message.toLowerCase()
+          const status = 'status' in error ? Number(error.status) : 0
+          if (status === 429 || text.includes('rate') || text.includes('too many')) return 'rate'
           if (text.includes('already') || text.includes('registered')) return 'exists'
-          if (text.includes('handle')) return 'name'
+          if (text.includes('handle')) return 'taken'
           return 'email'
         }
         if (!data.user) return 'missing'
         if (!data.session) return 'confirm'
-        const next = await hydrate(data.user.id, data.user.email ?? email)
-        setUser(next)
-        return next ? null : 'missing'
+        void hydrate(data.user.id, data.user.email ?? email).then((next) => {
+          if (next) setUser(next)
+        })
+        return null
       },
       login: async ({ email, password }) => {
         const db = getSupabase()
@@ -164,18 +246,47 @@ export function SessionProvider({ children }: { children: ReactNode }) {
           password,
         })
         if (error || !data.user) return 'login'
-        const next = await hydrate(data.user.id, data.user.email ?? email)
-        setUser(next)
-        return next ? null : 'missing'
+        void hydrate(data.user.id, data.user.email ?? email).then((next) => {
+          if (next) setUser(next)
+        })
+        return null
       },
-      joinWith: async (provider) => {
+      joinWith: async (provider, popup) => {
         const db = getSupabase()
         if (!db) return 'config'
-        const { error } = await db.auth.signInWithOAuth({
+        const { data, error } = await db.auth.signInWithOAuth({
           provider,
-          options: { redirectTo: `${window.location.origin}/profile` },
+          options: {
+            redirectTo: `${window.location.origin}/auth/callback`,
+            skipBrowserRedirect: true,
+            ...(provider === 'google' ? { queryParams: { prompt: 'select_account' } } : {}),
+          },
         })
-        return error ? 'missing' : null
+        if (error || !data.url) {
+          popup?.close()
+          return 'oauth'
+        }
+        if (!popup || popup.closed) {
+          window.location.assign(data.url)
+          return null
+        }
+        const waiting = waitForOauthPopup(db, popup)
+        markOauthPopup()
+        try {
+          popup.location.assign(data.url)
+        } catch {
+          window.location.assign(data.url)
+          return null
+        }
+        const result = await waiting
+        if (result) return result
+        const { data: sessionData } = await db.auth.getSession()
+        const authUser = sessionData.session?.user
+        if (!authUser) return 'oauth'
+        await applyOauthProfile(authUser.id, authUser.user_metadata as Record<string, unknown>)
+        const next = await hydrate(authUser.id, authUser.email ?? '')
+        setUser(next)
+        return next ? null : 'missing'
       },
       logout: async () => {
         const db = getSupabase()

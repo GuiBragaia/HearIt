@@ -10,13 +10,13 @@ import { cn } from '@/lib/utils'
 function ShellInner({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const { playing, feel } = usePlaying()
-  const isLanding = pathname === '/'
+  const isBare = pathname === '/' || pathname.startsWith('/auth/')
 
   return (
     <div
       className={cn(
         'app-root',
-        !isLanding && 'has-nav',
+        !isBare && 'has-nav',
         playing && 'is-playing',
         feel === 'perfect' && 'is-perfect',
         feel === 'clutch' && 'is-clutch',
@@ -25,9 +25,9 @@ function ShellInner({ children }: { children: React.ReactNode }) {
       )}
     >
       <div className="atmosphere" aria-hidden />
-      {!isLanding ? <Header /> : null}
+      {!isBare ? <Header /> : null}
       <div className="app-main">{children}</div>
-      {!isLanding ? <MobileNav /> : null}
+      {!isBare ? <MobileNav /> : null}
     </div>
   )
 }

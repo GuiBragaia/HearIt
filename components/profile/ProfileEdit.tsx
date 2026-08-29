@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useSession } from '@/components/auth/session-context'
 import { readPhotoFile, type PhotoDraft } from '@/lib/photo'
-import { artistById, artists } from '@/lib/artists'
+import { artistById, artistFromToken, artists, slugifyArtist } from '@/lib/artists'
 import { OverlayPortal } from '@/components/overlay-portal'
 import { pickOffensiveLine, useI18n } from '@/lib/i18n'
 import { hasDisplayName, profileTitle } from '@/lib/session'
@@ -319,6 +319,30 @@ export function FavoriteArtists({
   )
 }
 
+type PickerHit = { id: string; name: string; artwork?: string | null }
+
+function PickerThumb({ name, artwork }: { name: string; artwork?: string | null }) {
+  const [broken, setBroken] = useState(false)
+  useEffect(() => {
+    setBroken(false)
+  }, [artwork])
+  if (!artwork || broken) return <ArtistThumb name={name} lazy />
+  return (
+    <span className="artist-thumb">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={artwork}
+        alt=""
+        loading="lazy"
+        decoding="async"
+        referrerPolicy="no-referrer"
+        onError={() => setBroken(true)}
+      />
+      <i aria-hidden />
+    </span>
+  )
+}
+
 function ArtistPicker({
   open,
   taken,
@@ -335,12 +359,21 @@ function ArtistPicker({
   const { t } = useI18n()
   const reduce = useReducedMotion()
   const [query, setQuery] = useState('')
+  const [remote, setRemote] = useState<PickerHit[]>([])
   const searchRef = useRef<HTMLInputElement>(null)
-  const takenSet = useMemo(() => new Set(taken), [taken])
+  const queryId = useRef(0)
+  const takenIds = useMemo(
+    () => new Set(taken.flatMap((token) => {
+      const match = artistFromToken(token)
+      return match ? [match.id, slugifyArtist(match.name)] : []
+    })),
+    [taken],
+  )
 
   useEffect(() => {
     if (!open) {
       setQuery('')
+      setRemote([])
       return
     }
     searchRef.current?.focus()
@@ -351,12 +384,44 @@ function ArtistPicker({
     return () => window.removeEventListener('keydown', onKey)
   }, [open, onClose])
 
-  const filtered = artists.filter((artist) => {
-    if (takenSet.has(artist.id)) return false
+  useEffect(() => {
+    if (!open) return
+    const id = (queryId.current += 1)
+    const timer = window.setTimeout(
+      () => {
+        void fetch(`/api/artists?q=${encodeURIComponent(query.trim())}`)
+          .then((response) => response.json())
+          .then((data: { hits?: PickerHit[] }) => {
+            if (id === queryId.current) setRemote(data.hits ?? [])
+          })
+          .catch(() => {})
+      },
+      query.trim().length < 2 ? 0 : 140,
+    )
+    return () => window.clearTimeout(timer)
+  }, [open, query])
+
+  const local = useMemo(() => {
     const needle = query.trim().toLowerCase()
-    if (!needle) return true
-    return artist.name.toLowerCase().includes(needle)
-  })
+    return artists
+      .filter((artist) => {
+        if (takenIds.has(artist.id)) return false
+        if (!needle) return true
+        return artist.name.toLowerCase().includes(needle)
+      })
+      .map((artist): PickerHit => ({ id: artist.id, name: artist.name }))
+  }, [query, takenIds])
+
+  const filtered = useMemo(() => {
+    const needle = query.trim().toLowerCase()
+    const remoteFit = remote.filter((hit) => {
+      const token = artistFromToken(hit.name)?.id ?? hit.id
+      if (takenIds.has(token) || takenIds.has(hit.id)) return false
+      if (!needle) return true
+      return hit.name.toLowerCase().includes(needle)
+    })
+    return (remoteFit.length ? remoteFit : local).slice(0, 16)
+  }, [local, remote, query, takenIds])
 
   return (
     <OverlayPortal>
@@ -395,8 +460,8 @@ function ArtistPicker({
             <ul className="artist-pick-list">
               {filtered.map((artist) => (
                 <li key={artist.id}>
-                  <button type="button" onClick={() => onPick(artist.id)}>
-                    <ArtistThumb name={artist.name} lazy />
+                  <button type="button" onClick={() => onPick(artist.name)}>
+                    <PickerThumb name={artist.name} artwork={artist.artwork} />
                     <span>{artist.name}</span>
                   </button>
                 </li>

@@ -27,7 +27,7 @@ export function LogoMark({ className, size = 30 }: { className?: string; size?: 
 
 export function Logo({ href = '/', className }: { href?: string; className?: string }) {
   return (
-    <Link href={href} className={cn('logo', className)} aria-label="hear it">
+    <Link href={href} className={cn('logo', className)} aria-label="Hear It">
       <LogoMark />
       <span className="logo-word">
         hear <em>it</em>

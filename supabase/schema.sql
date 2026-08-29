@@ -1,5 +1,7 @@
 -- Hear It — run this in the Supabase SQL editor (once).
 -- Auth: disable "Confirm email" in Authentication > Providers while developing.
+-- Enable Google and Apple in Authentication > Providers, then add
+-- {your-origin}/auth/callback to Authentication > URL Configuration > Redirect URLs.
 
 create extension if not exists citext;
 
@@ -108,6 +110,7 @@ as $$
 declare
   h text;
   n text;
+  p text;
   attempt text;
   i int := 0;
 begin
@@ -115,17 +118,28 @@ begin
   if char_length(h) < 2 then
     h := 'player';
   end if;
-  n := trim(coalesce(new.raw_user_meta_data->>'display_name', ''));
+  n := trim(coalesce(
+    case when jsonb_typeof(new.raw_user_meta_data->'display_name') = 'string' then new.raw_user_meta_data->>'display_name' end,
+    case when jsonb_typeof(new.raw_user_meta_data->'full_name') = 'string' then new.raw_user_meta_data->>'full_name' end,
+    case when jsonb_typeof(new.raw_user_meta_data->'name') = 'string' then new.raw_user_meta_data->>'name' end,
+    case when jsonb_typeof(new.raw_user_meta_data->'given_name') = 'string' then new.raw_user_meta_data->>'given_name' end,
+    nullif(concat_ws(' ', new.raw_user_meta_data->'name'->>'firstName', new.raw_user_meta_data->'name'->>'lastName'), ''),
+    ''
+  ));
   if char_length(n) > 24 then
     n := left(n, 24);
   end if;
+  p := coalesce(
+    nullif(new.raw_user_meta_data->>'avatar_url', ''),
+    nullif(new.raw_user_meta_data->>'picture', '')
+  );
   attempt := h;
   while exists (select 1 from public.profiles where handle = attempt) loop
     i := i + 1;
     attempt := left(h, 12) || i::text;
   end loop;
-  insert into public.profiles (id, handle, display_name)
-  values (new.id, attempt, n);
+  insert into public.profiles (id, handle, display_name, photo_url)
+  values (new.id, attempt, n, p);
   return new;
 end;
 $$;

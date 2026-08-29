@@ -53,4 +53,10 @@ export const catalog: Song[] = [
   { id: 'time-to-dance', title: 'Time to Dance', artist: 'The Sounds', aliases: [] },
   { id: 'take-on-me', title: 'Take On Me', artist: 'a-ha', aliases: ['take on me'] },
   { id: 'feel-good-inc', title: 'Feel Good Inc.', artist: 'Gorillaz', aliases: ['feel good inc'] },
+  {
+    id: 'bones',
+    title: 'Bones',
+    artist: 'Imagine Dragons',
+    aliases: ['bones imagine dragons', 'imagine dragons bones', 'bone'],
+  },
 ]
