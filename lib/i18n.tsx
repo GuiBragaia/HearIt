@@ -636,14 +636,18 @@ type I18nContextValue = {
   locale: Locale
   setLocale: (locale: Locale) => void
   t: Dictionary
+  switching: Locale | null
 }
 
 const I18nContext = createContext<I18nContextValue | null>(null)
 
 const STORAGE_KEY = 'hear-it-locale'
+const SWAP_MS = 1000
+const DONE_MS = 1280
 
 export function I18nProvider({ children }: { children: ReactNode }) {
   const [locale, setLocaleState] = useState<Locale>('en')
+  const [switching, setSwitching] = useState<Locale | null>(null)
 
   useEffect(() => {
     const saved = window.localStorage.getItem(STORAGE_KEY)
@@ -655,12 +659,31 @@ export function I18nProvider({ children }: { children: ReactNode }) {
     document.documentElement.classList.add('dark')
   }, [locale])
 
+  useEffect(() => {
+    if (!switching) return
+    const swap = window.setTimeout(() => setLocaleState(switching), SWAP_MS)
+    const done = window.setTimeout(() => setSwitching(null), DONE_MS)
+    return () => {
+      window.clearTimeout(swap)
+      window.clearTimeout(done)
+    }
+  }, [switching])
+
   const setLocale = (next: Locale) => {
-    setLocaleState(next)
+    if (next === locale || switching) return
     window.localStorage.setItem(STORAGE_KEY, next)
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    if (reduce) {
+      setLocaleState(next)
+      return
+    }
+    setSwitching(next)
   }
 
-  const value = useMemo(() => ({ locale, setLocale, t: dictionaries[locale] }), [locale])
+  const value = useMemo(
+    () => ({ locale, setLocale, t: dictionaries[locale], switching }),
+    [locale, switching],
+  )
 
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>
 }

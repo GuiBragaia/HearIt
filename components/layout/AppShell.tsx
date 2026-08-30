@@ -4,6 +4,7 @@ import { usePathname } from 'next/navigation'
 import { PlayingProvider, usePlaying } from './playing-context'
 import { RouteMotionProvider } from './route-motion'
 import { Header } from './Header'
+import { LocaleVeil } from './LocaleVeil'
 import { MobileNav } from './MobileNav'
 import { cn } from '@/lib/utils'
 
@@ -28,6 +29,7 @@ function ShellInner({ children }: { children: React.ReactNode }) {
       {!isBare ? <Header /> : null}
       <div className="app-main">{children}</div>
       {!isBare ? <MobileNav /> : null}
+      <LocaleVeil />
     </div>
   )
 }

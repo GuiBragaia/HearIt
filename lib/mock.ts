@@ -59,4 +59,16 @@ export const catalog: Song[] = [
     artist: 'Imagine Dragons',
     aliases: ['bones imagine dragons', 'imagine dragons bones', 'bone'],
   },
+  {
+    id: 'smells-like-teen-spirit',
+    title: 'Smells Like Teen Spirit',
+    artist: 'Nirvana',
+    aliases: [
+      'smell like teen spirit',
+      'smell like a teen spirit',
+      'smells like a teen spirit',
+      'teen spirit',
+      'smells like teen spirit nirvana',
+    ],
+  },
 ]

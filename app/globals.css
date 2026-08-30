@@ -3915,6 +3915,116 @@ span.profile-edit {
   border: 1px solid #3d4a2c;
 }
 
+.locale-veil {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  z-index: 70;
+  display: grid;
+  width: 122vw;
+  height: 100%;
+  place-items: center;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse at 42% 44%, rgba(200, 243, 90, 0.1), transparent 52%),
+    #070807;
+  text-align: center;
+  user-select: none;
+  will-change: transform;
+}
+
+.locale-veil[data-dir='1'] {
+  left: 0;
+  clip-path: polygon(0 0, calc(100% - 11vw) 0, 100% 100%, 0 100%);
+}
+
+.locale-veil[data-dir='-1'] {
+  right: 0;
+  left: auto;
+  clip-path: polygon(11vw 0, 100% 0, 100% 100%, 0 100%);
+}
+
+.locale-veil-wash {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(90deg, rgba(200, 243, 90, 0.04), transparent 34%, transparent 70%, rgba(200, 243, 90, 0.05));
+}
+
+.locale-veil[data-dir='-1'] .locale-veil-wash {
+  background: linear-gradient(270deg, rgba(200, 243, 90, 0.04), transparent 34%, transparent 70%, rgba(200, 243, 90, 0.05));
+}
+
+.locale-veil-bloom {
+  position: absolute;
+  width: min(72vw, 480px);
+  height: min(72vw, 480px);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(200, 243, 90, 0.16), transparent 68%);
+  pointer-events: none;
+}
+
+.locale-veil-edge {
+  position: absolute;
+  top: -18%;
+  width: 3px;
+  height: 136%;
+  background: var(--primary);
+  box-shadow: 0 0 36px rgba(200, 243, 90, 0.5);
+  pointer-events: none;
+}
+
+.locale-veil[data-dir='1'] .locale-veil-edge {
+  right: 5.2vw;
+  transform: rotate(8deg);
+}
+
+.locale-veil[data-dir='-1'] .locale-veil-edge {
+  left: 5.2vw;
+  transform: rotate(-8deg);
+}
+
+.locale-veil-mark {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 0;
+  opacity: 0.1;
+  filter: blur(5px);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  mask-image: radial-gradient(ellipse at 50% 50%, #000 28%, transparent 76%);
+  -webkit-mask-image: radial-gradient(ellipse at 50% 50%, #000 28%, transparent 76%);
+}
+
+.locale-veil .viewport-wave {
+  z-index: 0;
+  opacity: 0.28;
+}
+
+.locale-veil-stage {
+  position: relative;
+  z-index: 1;
+}
+
+.locale-veil-kicker {
+  margin: 0;
+  color: var(--primary);
+  font-size: 12px;
+  font-weight: 550;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.locale-veil-word {
+  margin: 14px 0 0;
+  font-family: var(--font-display);
+  font-size: clamp(56px, 12vw, 104px);
+  font-weight: 650;
+  letter-spacing: -0.07em;
+  line-height: 0.9;
+}
+
 .hello-layer {
   position: fixed;
   inset: 0;
