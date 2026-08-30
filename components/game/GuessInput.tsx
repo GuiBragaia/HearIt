@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { normalizeGuess } from '@/lib/game'
+import { normalizeGuess, songCoreTitle } from '@/lib/game'
+import { guessFitsQuery } from '@/lib/catalog-quality'
 import { catalogHits, type GuessHit } from '@/lib/guess-search'
 import { useI18n } from '@/lib/i18n'
 
@@ -66,14 +67,9 @@ export function GuessInput({
     const needle = normalizeGuess(value)
     const seen = new Set<string>()
     const out: GuessHit[] = []
-    const remoteFit = remote.filter(
-      (hit) =>
-        needle.length < SUGGEST_MIN ||
-        normalizeGuess(hit.title).includes(needle) ||
-        normalizeGuess(hit.artist).includes(needle),
-    )
+    const remoteFit = remote.filter((hit) => needle.length < SUGGEST_MIN || guessFitsQuery(value, hit))
     for (const hit of [...local, ...remoteFit]) {
-      const key = `${normalizeGuess(hit.title)}:${normalizeGuess(hit.artist)}`
+      const key = `${normalizeGuess(songCoreTitle(hit.title))}:${normalizeGuess(hit.artist)}`
       if (seen.has(key)) continue
       seen.add(key)
       out.push(hit)

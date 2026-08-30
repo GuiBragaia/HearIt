@@ -35,7 +35,7 @@ export async function itunesSearch(term: string, extra: Record<string, string> =
     limit: '25',
     ...extra,
   })
-  const data = (await cachedJson(`https://itunes.apple.com/search?${params}`)) as {
+  const data = (await cachedJson(`https://itunes.apple.com/search?${params}`, 4000)) as {
     results?: unknown[]
   }
   return data.results ?? []

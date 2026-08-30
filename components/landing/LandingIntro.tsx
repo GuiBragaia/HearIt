@@ -74,9 +74,6 @@ export const LandingIntro = forwardRef<HTMLDivElement, { onFinish: () => void }>
   }, [live])
 
   useEffect(() => {
-    const ctx = createIntroAudioContext()
-    if (ctx) ctxRef.current = ctx
-
     const onGesture = (event: Event) => {
       if (liveRef.current || done.current) return
       if (event.type === 'keydown') {
@@ -84,11 +81,15 @@ export const LandingIntro = forwardRef<HTMLDivElement, { onFinish: () => void }>
         if (key !== 'Enter' && key !== ' ') return
         event.preventDefault()
       }
+      let ctx = ctxRef.current
+      if (!ctx) {
+        ctx = createIntroAudioContext()
+        ctxRef.current = ctx
+      }
       if (!ctx) {
         begin()
         return
       }
-      const pending = ctx.resume()
       try {
         const osc = ctx.createOscillator()
         const gain = ctx.createGain()
@@ -100,14 +101,10 @@ export const LandingIntro = forwardRef<HTMLDivElement, { onFinish: () => void }>
       } catch {
         /* still locked */
       }
-      void pending.then(() => begin()).catch(() => begin())
-    }
-
-    if (ctx) {
-      void ctx.resume().then(() => {
-        if (done.current || liveRef.current) return
-        if (ctx.state === 'running') begin()
-      })
+      void ctx
+        .resume()
+        .then(() => begin())
+        .catch(() => begin())
     }
 
     window.addEventListener('pointerdown', onGesture, { capture: true })
@@ -117,10 +114,11 @@ export const LandingIntro = forwardRef<HTMLDivElement, { onFinish: () => void }>
       window.removeEventListener('pointerdown', onGesture, { capture: true })
       window.removeEventListener('keydown', onGesture, { capture: true })
       try {
-        fadeIntroSound(masterRef.current, ctx)
+        fadeIntroSound(masterRef.current, ctxRef.current)
       } catch {
         /* ignore */
       }
+      const ctx = ctxRef.current
       window.setTimeout(() => {
         ctx?.close().catch(() => undefined)
       }, 240)

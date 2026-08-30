@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { resolveDailyTrack } from '@/lib/itunes'
 import { songForDay } from '@/lib/songs'
 
 export function useAlbumArt() {
@@ -10,13 +9,23 @@ export function useAlbumArt() {
 
   useEffect(() => {
     let live = true
-    void resolveDailyTrack(song).then((track) => {
-      if (live) setSrc(track.artworkUrl)
+    const params = new URLSearchParams({
+      id: song.id,
+      title: song.title,
+      artist: song.artist,
     })
+    void fetch(`/api/daily-track?${params}`, { cache: 'force-cache' })
+      .then((response) => response.json())
+      .then((track: { artworkUrl?: string | null }) => {
+        if (live) setSrc(track.artworkUrl ?? null)
+      })
+      .catch(() => {
+        if (live) setSrc(null)
+      })
     return () => {
       live = false
     }
-  }, [song.id])
+  }, [song.id, song.title, song.artist])
 
   return src
 }

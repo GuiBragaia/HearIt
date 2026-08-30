@@ -1,9 +1,9 @@
 import type { Metadata } from 'next'
-import { DevelopingMode } from '@/components/modes/DevelopingMode'
+import { NonStopScreen } from '@/components/nonstop/NonStopScreen'
 import { pageMetadata } from '@/lib/seo'
 
 export const metadata: Metadata = pageMetadata('plays')
 
 export default function PlaysPage() {
-  return <DevelopingMode mode="plays" />
+  return <NonStopScreen />
 }

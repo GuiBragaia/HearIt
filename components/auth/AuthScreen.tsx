@@ -16,6 +16,15 @@ import { waitForSessionUser } from '@/lib/db'
 import { getSupabase } from '@/lib/supabase'
 import { cn } from '@/lib/utils'
 
+const NEXT_PATHS = new Set(['/plays', '/daily', '/play', '/profile'])
+
+function destPath() {
+  if (typeof window === 'undefined') return '/profile'
+  const raw = new URLSearchParams(window.location.search).get('next')
+  if (raw && NEXT_PATHS.has(raw)) return raw
+  return '/profile'
+}
+
 type AuthFieldName = 'username' | 'display' | 'email' | 'password'
 type HelloState = { kind: AuthHelloKind; name: string; handle: string }
 
@@ -35,11 +44,17 @@ export function AuthScreen({ mode }: { mode: 'join' | 'login' }) {
   const [formBusy, setFormBusy] = useState(false)
   const [created, setCreated] = useState(false)
   const [oauthWait, setOauthWait] = useState<'apple' | 'google' | null>(null)
+  const [nextSuffix, setNextSuffix] = useState('')
   const oauthPopup = useRef<Window | null>(null)
   const uid = useId()
 
   useEffect(() => {
-    if (user && !hello && !socialBusy && !formBusy) router.replace('/profile')
+    const raw = new URLSearchParams(window.location.search).get('next')
+    if (raw && NEXT_PATHS.has(raw)) setNextSuffix(`?next=${encodeURIComponent(raw)}`)
+  }, [])
+
+  useEffect(() => {
+    if (user && !hello && !socialBusy && !formBusy) router.replace(destPath())
   }, [user, hello, router, socialBusy, formBusy])
 
   useEffect(() => {
@@ -125,7 +140,7 @@ export function AuthScreen({ mode }: { mode: 'join' | 'login' }) {
       })
       return
     }
-    router.push('/profile')
+    router.push(destPath())
   }
 
   const submit = async (event: React.FormEvent) => {
@@ -235,7 +250,7 @@ export function AuthScreen({ mode }: { mode: 'join' | 'login' }) {
               <p className="auth-created-kicker">{t.auth.createdKicker}</p>
               <h2 className="auth-created-title">{t.auth.createdTitle}</h2>
               <p className="auth-created-lead">{t.auth.createdLead}</p>
-              <Link href="/login" className="land-play auth-submit no-underline">
+              <Link href={`/login${nextSuffix}`} className="land-play auth-submit no-underline">
                 {t.auth.signIn}
               </Link>
             </div>
@@ -324,11 +339,11 @@ export function AuthScreen({ mode }: { mode: 'join' | 'login' }) {
             <Link href="/daily">{t.auth.playFree}</Link>
             {mode === 'join' ? (
               <p>
-                {t.auth.hasAccount} <Link href="/login">{t.auth.signIn}</Link>
+                {t.auth.hasAccount} <Link href={`/login${nextSuffix}`}>{t.auth.signIn}</Link>
               </p>
             ) : (
               <p>
-                {t.auth.noAccount} <Link href="/join">{t.auth.create}</Link>
+                {t.auth.noAccount} <Link href={`/join${nextSuffix}`}>{t.auth.create}</Link>
               </p>
             )}
           </div>
@@ -349,7 +364,7 @@ export function AuthScreen({ mode }: { mode: 'join' | 'login' }) {
         handle={hello?.handle}
         onDone={() => {
           setHello(null)
-          router.push('/profile')
+          router.push(destPath())
         }}
       />
     </section>

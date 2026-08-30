@@ -140,6 +140,10 @@ export function DailyDone({
             <Link href="/join" className="shine-btn daily-done-join no-underline">
               {t.daily.keepGoing}
             </Link>
+            <p className="daily-done-aside">{t.nonstop.needsAccount}</p>
+            <Link href="/join?next=/plays" className="result-again no-underline">
+              {t.nav.plays}
+            </Link>
           </div>
         )}
 
@@ -149,6 +153,11 @@ export function DailyDone({
           <button type="button" onClick={onShare} className={cn('shine-btn result-share', !user && 'is-quiet')}>
             {t.game.share}
           </button>
+          {user ? (
+            <Link href="/plays" className="result-again no-underline">
+              {t.nonstop.keepHearing}
+            </Link>
+          ) : null}
         </div>
       </div>
     </motion.section>

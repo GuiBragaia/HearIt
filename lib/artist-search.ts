@@ -1,17 +1,12 @@
 import { artists, slugifyArtist } from '@/lib/artists'
-import { cachedJson, itunesSearch } from '@/lib/apple'
+import { isJunkArtist } from '@/lib/catalog-quality'
+import { deezerJson } from '@/lib/deezer'
 import { normalizeGuess } from '@/lib/game'
 
 export type ArtistHit = {
   id: string
   name: string
   artwork?: string | null
-}
-
-type ItunesArtist = {
-  artistId?: number
-  artistName?: string
-  artistType?: string
 }
 
 type DeezerArtist = {
@@ -22,6 +17,8 @@ type DeezerArtist = {
   nb_fan?: number
 }
 
+const MIN_SEARCH_FANS = 80_000
+
 function slug(name: string) {
   return slugifyArtist(name)
 }
@@ -29,8 +26,8 @@ function slug(name: string) {
 function isBandOrSinger(name: string) {
   const value = name.trim()
   if (!value) return false
-  if (/^various artists$/i.test(value)) return false
-  if (/tribute|karaoke|feat\.|ft\./i.test(value)) return false
+  if (isJunkArtist(value)) return false
+  if (/feat\.|ft\./i.test(value)) return false
   return true
 }
 
@@ -48,45 +45,30 @@ export async function searchArtists(query: string): Promise<ArtistHit[]> {
   const term = query.trim()
   const local: ArtistHit[] = artists
     .filter((artist) => !term || artist.name.toLowerCase().includes(term.toLowerCase()))
+    .filter((artist) => isBandOrSinger(artist.name))
     .slice(0, 12)
     .map((artist) => ({ id: artist.id, name: artist.name }))
 
   if (term.length < 2) return local
 
-  const [itunes, deezer] = await Promise.allSettled([
-    itunesSearch(term, { entity: 'musicArtist', limit: '12' }),
-    cachedJson(`https://api.deezer.com/search/artist?q=${encodeURIComponent(term)}&limit=12`),
-  ])
-
-  const apple: ArtistHit[] =
-    itunes.status === 'fulfilled'
-      ? ((itunes.value as ItunesArtist[]) ?? [])
-          .filter((row) => {
-            if (!row.artistName || !isBandOrSinger(row.artistName)) return false
-            if (!matchesQuery(row.artistName, term)) return false
-            return !row.artistType || row.artistType === 'Artist'
-          })
-          .map((row) => ({
-            id: slug(row.artistName ?? '') || `it-${row.artistId}`,
-            name: row.artistName ?? '',
-          }))
-      : []
-
-  const dzRows: ArtistHit[] =
-    deezer.status === 'fulfilled'
-      ? (((deezer.value as { data?: DeezerArtist[] }).data ?? []) as DeezerArtist[])
-          .filter((row) => row.name && isBandOrSinger(row.name) && matchesQuery(row.name, term))
-          .sort((a, b) => (b.nb_fan ?? 0) - (a.nb_fan ?? 0))
-          .map((row) => ({
-            id: slug(row.name ?? '') || `dz-${row.id}`,
-            name: row.name ?? '',
-            artwork: row.picture_small || row.picture_medium || null,
-          }))
-      : []
+  const data = await deezerJson<{ data?: DeezerArtist[] }>(
+    `/search/artist?q=${encodeURIComponent(term)}&limit=15`,
+  )
+  const remote: ArtistHit[] = (data?.data ?? [])
+    .filter((row) => {
+      if (!row.name || !isBandOrSinger(row.name) || !matchesQuery(row.name, term)) return false
+      return (row.nb_fan ?? 0) >= MIN_SEARCH_FANS
+    })
+    .sort((a, b) => (b.nb_fan ?? 0) - (a.nb_fan ?? 0))
+    .map((row) => ({
+      id: slug(row.name ?? '') || `dz-${row.id}`,
+      name: row.name ?? '',
+      artwork: row.picture_small || row.picture_medium || null,
+    }))
 
   const seen = new Set<string>()
   const out: ArtistHit[] = []
-  for (const hit of [...local, ...dzRows, ...apple]) {
+  for (const hit of [...local, ...remote]) {
     const key = keyOf(hit.name)
     if (!key || seen.has(key)) {
       const existing = out.find((item) => keyOf(item.name) === key)

@@ -9,7 +9,7 @@ import { useSession } from '@/components/auth/session-context'
 
 const ITEMS = [
   { href: '/daily', key: 'daily' as const, icon: Headphones, developing: false },
-  { href: '/plays', key: 'plays' as const, icon: Zap, developing: true },
+  { href: '/plays', key: 'plays' as const, icon: Zap, developing: false },
   { href: '/online', key: 'online' as const, icon: Swords, developing: true },
   { href: '/leaderboard', key: 'leaderboard' as const, icon: Trophy, developing: false },
   { href: '/profile', key: 'profile' as const, icon: UserRound, developing: false },

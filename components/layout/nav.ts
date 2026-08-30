@@ -1,6 +1,6 @@
 export const NAV_ITEMS = [
   { href: '/daily', key: 'daily' as const },
-  { href: '/plays', key: 'plays' as const, developing: true },
+  { href: '/plays', key: 'plays' as const },
   { href: '/online', key: 'online' as const, developing: true },
   { href: '/leaderboard', key: 'leaderboard' as const },
   { href: '/profile', key: 'profile' as const },
