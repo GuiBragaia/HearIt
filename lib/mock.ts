@@ -71,4 +71,15 @@ export const catalog: Song[] = [
       'smells like teen spirit nirvana',
     ],
   },
+  {
+    id: 'i-want-it-that-way',
+    title: 'I Want It That Way',
+    artist: 'Backstreet Boys',
+    aliases: [
+      'i wanna it that way',
+      'i want it that way',
+      'want it that way',
+      'i want it that way backstreet boys',
+    ],
+  },
 ]
