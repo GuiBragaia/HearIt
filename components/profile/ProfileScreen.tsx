@@ -12,6 +12,8 @@ import { loadRecentRuns } from '@/lib/db'
 import { songById } from '@/lib/songs'
 import { dailyKey } from '@/lib/game'
 import { HearLoading } from '@/components/states/HearLoading'
+import { ViewportWaveform } from '@/components/audio/ViewportWaveform'
+import { LogoMark } from '@/components/layout/Logo'
 import { useI18n } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
 
@@ -53,25 +55,56 @@ export function ProfileScreen() {
   return (
     <>
       {!user ? (
-        <section className="mx-auto w-full max-w-[720px] px-5 pb-20 pt-16">
-          <p className="enter enter-1 m-0 text-xs text-muted-foreground">{t.auth.joinKicker}</p>
-          <h1 className="enter enter-2 display mt-3 mb-0 text-[clamp(44px,9vw,80px)]">{t.profile.guestTitle}</h1>
-          <p className="enter enter-3 mt-5 max-w-md text-lg text-muted-foreground">{t.profile.guestLead}</p>
-          <p className="enter enter-4 mt-3 text-sm text-muted-foreground">{t.auth.dailyRule}</p>
-          <div className="enter enter-5 mt-8 flex flex-wrap gap-3">
-            <Link
-              href="/join"
-              className="land-play grid h-11 min-w-[140px] place-items-center rounded-md bg-primary px-5 text-sm font-medium text-primary-foreground no-underline"
-            >
-              {t.profile.join}
-            </Link>
-            <Link
-              href="/daily"
-              className="grid h-11 min-w-[140px] place-items-center rounded-md border border-[#3a4334] px-5 text-sm text-foreground no-underline"
-            >
-              {t.auth.playFree}
-            </Link>
+        <section className="play-hub">
+          <div className="play-hub-mark" aria-hidden>
+            <div className="play-hub-mark-inner">
+              <i className="hero-mark-bloom" />
+              <LogoMark size={460} className="hero-mark-ghost" />
+              <LogoMark size={460} className="hero-mark-core" />
+            </div>
           </div>
+
+          <div className="play-hub-copy">
+            <p className="enter enter-1 play-hub-kicker">{t.profile.guestKicker}</p>
+            <h1 className="enter enter-2 display play-hub-title">{t.profile.guestTitle}</h1>
+            <p className="enter enter-3 play-hub-lead">{t.profile.guestLead}</p>
+
+            <nav className="enter enter-4 play-rooms is-pair" aria-label={t.nav.profile}>
+              <Link href="/join?next=/profile" className="play-room is-live is-now">
+                <span className="play-room-bars is-daily" aria-hidden>
+                  <i />
+                  <i />
+                  <i />
+                  <i />
+                </span>
+                <small>{t.profile.guestJoinHint}</small>
+                <strong>{t.profile.join}</strong>
+                <em>{t.profile.guestJoinCopy}</em>
+              </Link>
+              <Link href="/login?next=/profile" className="play-room is-live">
+                <span className="play-room-bars is-plays" aria-hidden>
+                  <i />
+                  <i />
+                  <i />
+                  <i />
+                  <i />
+                  <i />
+                  <i />
+                  <em />
+                  <i />
+                </span>
+                <small>{t.profile.guestLoginHint}</small>
+                <strong>{t.auth.signIn}</strong>
+                <em>{t.profile.guestLoginCopy}</em>
+              </Link>
+            </nav>
+
+            <p className="enter enter-5 play-hub-meta">
+              <Link href="/daily">{t.profile.guestDaily}</Link>
+            </p>
+          </div>
+
+          <ViewportWaveform className="play-hub-wave" />
         </section>
       ) : (
         <section className="mx-auto w-full max-w-[880px] px-5 pb-20 pt-8">

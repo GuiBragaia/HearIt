@@ -11,7 +11,46 @@ import { readDailyRun } from '@/lib/daily-run'
 import { countPlayersToday } from '@/lib/db'
 import { songForDay } from '@/lib/songs'
 import { useI18n } from '@/lib/i18n'
-import { formatNumber } from '@/lib/utils'
+import { cn, formatNumber } from '@/lib/utils'
+
+function ModeBars({ kind }: { kind: 'daily' | 'plays' | 'online' }) {
+  if (kind === 'daily') {
+    return (
+      <span className="play-room-bars is-daily" aria-hidden>
+        <i />
+        <i />
+        <i />
+        <i />
+      </span>
+    )
+  }
+  if (kind === 'plays') {
+    return (
+      <span className="play-room-bars is-plays" aria-hidden>
+        <i />
+        <i />
+        <i />
+        <i />
+        <i />
+        <i />
+        <i />
+        <em />
+        <i />
+      </span>
+    )
+  }
+  return (
+    <span className="play-room-bars is-online" aria-hidden>
+      <i />
+      <i />
+      <i />
+      <em />
+      <i />
+      <i />
+      <i />
+    </span>
+  )
+}
 
 export function PlayHub() {
   const { t, locale } = useI18n()
@@ -53,6 +92,39 @@ export function PlayHub() {
 
   useEffect(() => () => window.clearTimeout(tapTimer.current), [])
 
+  const modes = [
+    {
+      href: '/daily',
+      kind: 'daily' as const,
+      title: t.nav.daily,
+      status: played ? t.home.dailyDone : t.home.dailyLive,
+      copy: t.home.dailyCopy,
+      live: true,
+      now: !played,
+      done: played,
+    },
+    {
+      href: '/plays',
+      kind: 'plays' as const,
+      title: t.nav.plays,
+      status: t.home.dailyLive,
+      copy: t.home.playsCopy,
+      live: true,
+      now: played,
+      done: false,
+    },
+    {
+      href: '/online',
+      kind: 'online' as const,
+      title: t.nav.online,
+      status: t.home.developing,
+      copy: t.home.onlineCopy,
+      live: false,
+      now: false,
+      done: false,
+    },
+  ]
+
   return (
     <motion.section
       className="play-hub"
@@ -91,35 +163,34 @@ export function PlayHub() {
           transition={{ duration: 0.7, delay: delay * 2, ease: [0.16, 1, 0.3, 1] }}
         >
           {t.home.titlea}
-          <br />
-          <em>{played ? t.home.dailyDone : t.home.titleb}</em>
         </motion.h1>
 
-        <motion.p
-          className="play-hub-lead"
-          initial={reduce ? false : { opacity: 0, y: 12 }}
+        <motion.nav
+          className="play-rooms"
+          aria-label={t.nav.play}
+          initial={reduce ? false : { opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: delay * 3, ease: [0.16, 1, 0.3, 1] }}
+          transition={{ duration: 0.7, delay: delay * 3, ease: [0.16, 1, 0.3, 1] }}
         >
-          {played ? t.home.playsCopy : t.home.dailyCopy}
-        </motion.p>
-
-        <motion.div
-          className="play-hub-actions"
-          initial={reduce ? false : { opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: delay * 4, ease: [0.16, 1, 0.3, 1] }}
-        >
-          <Link
-            href={played ? '/plays' : '/daily'}
-            className="land-play play-hub-go"
-          >
-            {played ? t.nav.plays : t.home.play}
-          </Link>
-          <Link href={played ? '/daily' : '/plays'} className="land-daily play-hub-side">
-            {played ? t.nav.daily : t.nav.plays}
-          </Link>
-        </motion.div>
+          {modes.map((mode) => (
+            <Link
+              key={mode.href}
+              href={mode.href}
+              className={cn(
+                'play-room',
+                mode.live && 'is-live',
+                !mode.live && 'is-soon',
+                mode.now && 'is-now',
+                mode.done && 'is-done',
+              )}
+            >
+              <ModeBars kind={mode.kind} />
+              <small>{mode.status}</small>
+              <strong>{mode.title}</strong>
+              <em>{mode.copy}</em>
+            </Link>
+          ))}
+        </motion.nav>
 
         <motion.p
           className="play-hub-meta"
@@ -136,18 +207,12 @@ export function PlayHub() {
           )}
           <span aria-hidden>·</span>
           <strong>{formatNumber(playersToday, locale)}</strong> {t.home.players}
+          <span aria-hidden>·</span>
+          <button type="button" onClick={() => setHello((value) => value + 1)} className="play-updates">
+            <i className="play-updates-dot" aria-hidden />
+            {t.home.updates}
+          </button>
         </motion.p>
-
-        <motion.button
-          type="button"
-          onClick={() => setHello((value) => value + 1)}
-          className="play-updates"
-          initial={reduce ? false : { opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.7, delay: delay * 7 }}
-        >
-          {t.home.updates}
-        </motion.button>
       </div>
 
       <ViewportWaveform className="play-hub-wave" />

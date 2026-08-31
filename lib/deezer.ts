@@ -196,7 +196,10 @@ export async function resolveDailyTrack(song?: { id: string; title: string; arti
     const data = await deezerJson<DeezerList<DeezerTrack>>(path)
     const track = (data?.data ?? [])
       .map(toHearTrack)
-      .find((row): row is HearTrack => Boolean(row) && titlesMatch(title, row.title) && artistsMatch(artist, row.artist))
+      .find((row): row is HearTrack => {
+        if (!row) return false
+        return titlesMatch(title, row.title) && artistsMatch(artist, row.artist)
+      })
     if (!track) continue
     const resolved = { previewUrl: track.previewUrl, artworkUrl: track.artworkUrl }
     dailyCache.set(key, resolved)

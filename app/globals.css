@@ -3429,7 +3429,7 @@ span.profile-edit {
   z-index: 10;
   display: flex;
   width: 100%;
-  max-width: 720px;
+  max-width: 980px;
   flex-direction: column;
   margin: 0 auto;
 }
@@ -3448,61 +3448,244 @@ span.profile-edit {
 }
 
 .play-hub-title {
-  margin: 18px 0 0;
-  font-size: clamp(40px, 8.5vw, 84px);
+  margin: 12px 0 0;
+  font-size: clamp(36px, 6vw, 56px);
   font-weight: 650;
   letter-spacing: -0.06em;
   line-height: 0.94;
 }
 
-.play-hub-title em {
-  color: var(--primary);
-  font-style: normal;
-}
-
 .play-hub-lead {
-  margin: 28px 0 0;
-  max-width: 34ch;
+  margin: 16px 0 0;
+  max-width: 36ch;
   color: var(--muted-foreground);
-  font-size: 17px;
-  line-height: 1.6;
+  font-size: 16px;
+  line-height: 1.55;
 }
 
-.play-hub-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+.play-rooms {
+  display: grid;
+  gap: 4px;
+  width: 100%;
   margin-top: 36px;
+  padding: 10px 12px 8px 16px;
+  border: 1px solid #242b20;
+  border-radius: 20px;
+  background: #0c100c;
+  box-shadow:
+    0 0 0 1px rgba(200, 243, 90, 0.04),
+    0 20px 50px rgba(0, 0, 0, 0.28);
 }
 
-@media (min-width: 560px) {
-  .play-hub-actions {
-    flex-direction: row;
+@media (min-width: 860px) {
+  .play-rooms {
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 0;
+    padding: 22px 10px 22px 14px;
+  }
+
+  .play-rooms.is-pair {
+    grid-template-columns: 1fr 1fr;
   }
 }
 
-.play-hub-go,
-.play-hub-side {
-  display: grid;
-  min-width: 148px;
-  height: 44px;
-  place-items: center;
-  border-radius: 6px;
-  font-size: 14px;
-  font-weight: 550;
+.play-room {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 20px 12px 20px 8px;
+  overflow: visible;
+  color: inherit;
   text-decoration: none;
 }
 
-.play-hub-go {
-  border: 0;
-  background: var(--primary);
-  color: var(--primary-foreground);
+@media (min-width: 860px) {
+  .play-room {
+    min-height: 260px;
+    padding: 16px 28px 16px 16px;
+  }
+
+  .play-room + .play-room {
+    padding-left: 32px;
+    border-left: 1px solid #242b20;
+  }
 }
 
-.play-hub-side {
-  border: 1px solid #3a4334;
+.play-room::after {
+  content: '';
+  position: absolute;
+  top: -12px;
+  left: -8px;
+  z-index: 0;
+  width: 220px;
+  height: 180px;
+  pointer-events: none;
+  background: radial-gradient(ellipse at 30% 30%, rgba(200, 243, 90, 0.2), transparent 72%);
+  opacity: 0;
+  filter: blur(8px);
+  transform: scale(0.86);
+  transition:
+    opacity 0.5s ease,
+    transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.play-room.is-now::after,
+.play-room:hover::after,
+.play-room:focus-visible::after {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.play-room.is-soon {
+  opacity: 0.4;
+}
+
+.play-room.is-soon:hover,
+.play-room.is-soon:focus-visible {
+  opacity: 0.75;
+}
+
+.play-room.is-done {
+  opacity: 0.38;
+}
+
+.play-room.is-done::after {
+  opacity: 0;
+}
+
+.play-room.is-done .play-room-bars i {
+  animation: none;
+  filter: grayscale(0.35);
+  box-shadow: none;
+}
+
+.play-room.is-done small {
+  color: #6d7568;
+}
+
+.play-room.is-done:hover,
+.play-room.is-done:focus-visible {
+  opacity: 0.82;
+}
+
+.play-room-bars {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 36px;
+  margin-bottom: 22px;
+}
+
+.play-room-bars i,
+.play-room-bars em {
+  display: block;
+  flex-shrink: 0;
+  border-radius: 2px;
+}
+
+.play-room-bars i {
+  width: 3px;
+  background: linear-gradient(180deg, #e8f7a8, #c8f35a 58%, #8fb83a);
+  box-shadow: 0 0 10px rgba(200, 243, 90, 0.28);
+  transform-origin: 50% 100%;
+}
+
+.play-room-bars em {
+  width: 6px;
+  height: 1px;
   background: transparent;
-  color: var(--foreground);
+}
+
+.play-room-bars.is-daily i:nth-child(1) { height: 22%; }
+.play-room-bars.is-daily i:nth-child(2) { height: 28%; }
+.play-room-bars.is-daily i:nth-child(3) { height: 48%; }
+.play-room-bars.is-daily i:nth-child(4) { height: 100%; }
+
+.play-room-bars.is-plays i:nth-child(1) { height: 100%; }
+.play-room-bars.is-plays i:nth-child(2) { height: 82%; }
+.play-room-bars.is-plays i:nth-child(3) { height: 34%; }
+.play-room-bars.is-plays i:nth-child(4) { height: 46%; }
+.play-room-bars.is-plays i:nth-child(5) { height: 34%; }
+.play-room-bars.is-plays i:nth-child(6) { height: 82%; }
+.play-room-bars.is-plays i:nth-child(7) { height: 100%; }
+.play-room-bars.is-plays i:nth-child(9) { height: 100%; }
+
+.play-room-bars.is-online i:nth-child(1) { height: 70%; }
+.play-room-bars.is-online i:nth-child(2) { height: 100%; }
+.play-room-bars.is-online i:nth-child(3) { height: 70%; }
+.play-room-bars.is-online i:nth-child(5) { height: 70%; }
+.play-room-bars.is-online i:nth-child(6) { height: 100%; }
+.play-room-bars.is-online i:nth-child(7) { height: 70%; }
+
+.play-room.is-now .play-room-bars i,
+.play-room:hover .play-room-bars i,
+.play-room:focus-visible .play-room-bars i {
+  animation: hear-load-bar 1.15s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+
+.play-room.is-now .play-room-bars i:nth-child(1),
+.play-room:hover .play-room-bars i:nth-child(1) { animation-delay: 0s; }
+.play-room.is-now .play-room-bars i:nth-child(2),
+.play-room:hover .play-room-bars i:nth-child(2) { animation-delay: 0.08s; }
+.play-room.is-now .play-room-bars i:nth-child(3),
+.play-room:hover .play-room-bars i:nth-child(3) { animation-delay: 0.16s; }
+.play-room.is-now .play-room-bars i:nth-child(4),
+.play-room:hover .play-room-bars i:nth-child(4) { animation-delay: 0.1s; }
+.play-room.is-now .play-room-bars i:nth-child(5),
+.play-room:hover .play-room-bars i:nth-child(5) { animation-delay: 0.2s; }
+.play-room.is-now .play-room-bars i:nth-child(6),
+.play-room:hover .play-room-bars i:nth-child(6) { animation-delay: 0.06s; }
+.play-room.is-now .play-room-bars i:nth-child(7),
+.play-room:hover .play-room-bars i:nth-child(7) { animation-delay: 0.14s; }
+.play-room.is-now .play-room-bars i:nth-child(9),
+.play-room:hover .play-room-bars i:nth-child(9) { animation-delay: 0.22s; }
+
+.play-room small {
+  position: relative;
+  z-index: 1;
+  color: #6d7568;
+  font-size: 11px;
+  font-weight: 550;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  transition: color 0.35s ease;
+}
+
+.play-room.is-now small,
+.play-room:hover small,
+.play-room:focus-visible small {
+  color: var(--primary);
+}
+
+.play-room strong {
+  position: relative;
+  z-index: 1;
+  margin-top: 10px;
+  font-family: var(--font-display);
+  font-size: clamp(32px, 5vw, 44px);
+  font-weight: 650;
+  letter-spacing: -0.05em;
+  line-height: 0.95;
+  transition: color 0.35s ease;
+}
+
+.play-room:hover strong,
+.play-room:focus-visible strong {
+  color: var(--primary);
+}
+
+.play-room em {
+  position: relative;
+  z-index: 1;
+  margin-top: 12px;
+  max-width: 22ch;
+  color: #8b9084;
+  font-size: 14px;
+  font-style: normal;
+  line-height: 1.5;
 }
 
 .play-hub-meta {
@@ -3534,13 +3717,20 @@ span.profile-edit {
 }
 
 .play-hub .play-updates {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   width: fit-content;
-  margin-top: 22px;
-  color: #8b9084;
+  color: var(--primary);
 }
 
 .play-hub .play-updates:hover {
-  color: var(--primary);
+  color: #e8f7a8;
+}
+
+.play-hub .play-updates:hover .play-updates-dot {
+  animation: none;
+  box-shadow: 0 0 10px rgba(200, 243, 90, 0.7);
 }
 
 .play-hub-wave {
@@ -4787,13 +4977,31 @@ span.profile-edit {
   padding: 0;
   border: 0;
   background: none;
-  color: #f3c2b4;
+  color: var(--primary);
   font: inherit;
   font-size: 14px;
 }
 
-.play-updates:hover {
-  color: #f07367;
+.play-updates-dot {
+  display: block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--primary);
+  box-shadow: 0 0 0 0 rgba(200, 243, 90, 0.55);
+  animation: play-updates-dot 2.2s ease-out infinite;
+}
+
+@keyframes play-updates-dot {
+  0% {
+    box-shadow: 0 0 0 0 rgba(200, 243, 90, 0.55);
+  }
+  70% {
+    box-shadow: 0 0 0 8px rgba(200, 243, 90, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(200, 243, 90, 0);
+  }
 }
 
 .badge-block {
@@ -5163,6 +5371,8 @@ span.profile-edit {
   .album-stage.is-on.is-win .album-cover img,
   .photo-look-bloom,
   .hear-load-bars i,
+  .play-room-bars i,
+  .play-updates-dot,
   .hear-load-line,
   .friend-hear,
   .friend-hear::before,
