@@ -121,8 +121,10 @@ export async function deezerEditorialTracks(editorialId: number) {
   return (data?.tracks?.data ?? []).map(toHearTrack).filter((row): row is HearTrack => Boolean(row))
 }
 
-export async function deezerPlaylistTracks(playlistId: number, limit = 80) {
-  const data = await deezerFresh<DeezerList<DeezerTrack>>(`/playlist/${playlistId}/tracks?limit=${limit}`)
+export async function deezerPlaylistTracks(playlistId: number, limit = 80, index = 0) {
+  const data = await deezerFresh<DeezerList<DeezerTrack>>(
+    `/playlist/${playlistId}/tracks?limit=${limit}&index=${Math.max(0, index)}`,
+  )
   return (data?.data ?? []).map(toHearTrack).filter((row): row is HearTrack => Boolean(row))
 }
 
@@ -179,27 +181,62 @@ export async function deezerArtistTop(artistId: number) {
     .slice(SKIP_TOP, SKIP_TOP + TAKE_TOP)
 }
 
-export async function resolveDailyTrack(song?: { id: string; title: string; artist: string }): Promise<DailyTrack> {
+function dailyFromRow(row: DeezerTrack | null | undefined): DailyTrack | null {
+  const preview = row?.preview?.trim()
+  if (!preview || !row?.id) return null
+  return {
+    previewUrl: proxiedPreview(preview, row.id),
+    artworkUrl: row.album?.cover_xl || row.album?.cover_medium || null,
+  }
+}
+
+export async function resolveDailyTrack(song?: {
+  id: string
+  title: string
+  artist: string
+  deezerId?: number
+}): Promise<DailyTrack> {
   const title = song?.title ?? 'Everybody Wants to Rule the World'
   const artist = song?.artist ?? 'Tears for Fears'
   const key = song?.id ?? `${title}-${artist}`
   const hit = dailyCache.get(key)
-  if (hit) return hit
+  if (hit?.previewUrl) return hit
+
+  if (song?.deezerId) {
+    const row = await deezerFresh<DeezerTrack>(`/track/${song.deezerId}`)
+    const pinned = dailyFromRow(row)
+    if (pinned?.previewUrl) {
+      dailyCache.set(key, pinned)
+      return pinned
+    }
+  }
 
   const core = songCoreTitle(title)
   const queries = [
     `/search/track?q=${encodeURIComponent(`track:"${core}" artist:"${artist}"`)}&limit=12`,
     `/search/track?q=${encodeURIComponent(`${core} ${artist}`)}&limit=15`,
+    `/search/track?q=${encodeURIComponent(`track:"${core}"`)}&limit=15`,
   ]
+
+  const pick = (rows: DeezerTrack[]) => {
+    const tracks = rows.map(toHearTrack).filter((row): row is HearTrack => Boolean(row))
+    const titled = tracks.filter((row) => titlesMatch(title, row.title))
+    if (!titled[0]) return null
+    const blobHas = (row: HearTrack) => {
+      const blob = `${row.title} ${row.artist}`
+      if (artistsMatch(artist, row.artist)) return true
+      const tokens = artist
+        .split(/\s+/)
+        .map((token) => token.trim())
+        .filter((token) => token.length >= 4)
+      return tokens.some((token) => artistsMatch(token, blob) || blob.toLowerCase().includes(token.toLowerCase()))
+    }
+    return titled.find(blobHas) ?? titled[0]
+  }
 
   for (const path of queries) {
     const data = await deezerJson<DeezerList<DeezerTrack>>(path)
-    const track = (data?.data ?? [])
-      .map(toHearTrack)
-      .find((row): row is HearTrack => {
-        if (!row) return false
-        return titlesMatch(title, row.title) && artistsMatch(artist, row.artist)
-      })
+    const track = pick(data?.data ?? [])
     if (!track) continue
     const resolved = { previewUrl: track.previewUrl, artworkUrl: track.artworkUrl }
     dailyCache.set(key, resolved)

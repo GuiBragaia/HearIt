@@ -9,6 +9,7 @@ import {
   sanitizeFavoriteIds,
   type SessionUser,
 } from '@/lib/session'
+import { sanitizeSavedTracks } from '@/lib/saved-tracks'
 import { friendStatus } from '@/lib/friends'
 import {
   acceptFriend as acceptRemote,
@@ -16,6 +17,7 @@ import {
   dropFriendship,
   loadSessionUser,
   patchProfile,
+  persistSavedTracks,
   requestFriend as requestRemote,
   uploadAvatar,
   waitForSessionUser,
@@ -50,6 +52,7 @@ type SessionValue = {
   logout: () => Promise<void>
   refresh: () => Promise<void>
   updateProfile: (patch: Partial<Pick<SessionUser, 'photo' | 'favorites' | 'name'>>) => Promise<AuthError | null>
+  saveLibrary: (tracks: SessionUser['savedTracks']) => Promise<boolean>
   requestFriend: (id: string) => Promise<void>
   cancelRequest: (id: string) => Promise<void>
   acceptFriend: (id: string) => Promise<void>
@@ -315,15 +318,30 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         }
         const name = patch.name !== undefined ? cleanDisplayName(patch.name) : user.name
         const favorites = patch.favorites !== undefined ? sanitizeFavoriteIds(patch.favorites) : user.favorites
+        setUser({ ...user, name, photo, favorites })
         const row = await patchProfile(user.id, {
           display_name: name,
           favorites,
           photo_url: photo ?? null,
         })
-        if (!row) return 'missing'
+        if (!row) {
+          setUser(user)
+          return 'missing'
+        }
         const next = await loadSessionUser(user.id, user.email)
         if (next) setUser(next)
         return null
+      },
+      saveLibrary: async (tracks) => {
+        if (!user) return false
+        const savedTracks = sanitizeSavedTracks(tracks)
+        setUser({ ...user, savedTracks })
+        const ok = await persistSavedTracks(user.id, savedTracks)
+        if (!ok) {
+          setUser(user)
+          return false
+        }
+        return true
       },
       requestFriend: async (id) => {
         if (!user) return

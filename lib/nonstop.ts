@@ -1,20 +1,18 @@
 import { deezerPlaylistTracks, type HearTrack } from '@/lib/deezer'
 import { normalizeGuess, songCoreTitle, spaceArtists } from '@/lib/game'
 
-const CHART_PLAYLISTS = [
-  3155776842, // Top Worldwide
-  1313621735, // Top USA
-  1111142221, // Top UK
-  1109890291, // Top France
-  1111143121, // Top Germany
-  1652248171, // Top Canada
-  1313616925, // Top Australia
-  1116190041, // Top Spain
-  1116187241, // Top Italy
-  1266971851, // Top Netherlands
-  1313620305, // Top Sweden
-  13562522521, // Top Women Worldwide
-]
+type Lane = 'classic' | 'nineties' | 'oughts' | 'tens' | 'recent'
+
+const PLAYLISTS: Record<Lane, number[]> = {
+  classic: [620264073, 1470022445, 8877326262, 867825522, 8512471762, 1413309725],
+  nineties: [878989033, 8873744282, 8027597282],
+  oughts: [248297032, 1977689462, 8326097522],
+  tens: [14917741483, 715215865, 8282573142, 8074581462],
+  recent: [13650084141, 5310238702, 5310088722, 3453772742, 5132762464, 1283499335, 12345421311, 12345467671],
+}
+
+const CYCLE: Lane[] = ['recent', 'classic', 'tens', 'recent', 'nineties', 'oughts']
+const HEAD = 22
 
 const BRAZIL_ACTS = [
   'Alok',
@@ -119,8 +117,24 @@ function shuffle<T>(list: T[]) {
   return next
 }
 
+function pickSome<T>(list: T[], take: number) {
+  return shuffle(list).slice(0, Math.min(take, list.length))
+}
+
 function trackKey(track: HearTrack) {
   return `${normalizeGuess(songCoreTitle(track.title))}:${normalizeGuess(track.artist)}`
+}
+
+function takeNext(
+  bucket: HearTrack[],
+  usedTrack: Set<string>,
+  usedArtist: Set<string>,
+) {
+  const index = bucket.findIndex((track) => {
+    return !usedTrack.has(trackKey(track)) && !usedArtist.has(normalizeGuess(track.artist))
+  })
+  if (index < 0) return null
+  return bucket.splice(index, 1)[0] ?? null
 }
 
 export async function buildNonstopQueue(input: {
@@ -130,26 +144,71 @@ export async function buildNonstopQueue(input: {
 }) {
   const exclude = normalizeGuess(input.exclude ?? '')
   const seenIds = new Set(input.seenIds ?? [])
-  const playlists = shuffle(CHART_PLAYLISTS).slice(0, 6)
-  const buckets = await Promise.all(playlists.map((id) => deezerPlaylistTracks(id)))
+  const sources = (Object.keys(PLAYLISTS) as Lane[]).flatMap((lane) => {
+    const take = lane === 'recent' ? 3 : 2
+    return pickSome(PLAYLISTS[lane], take).map((id) => ({ lane, id }))
+  })
 
+  const fetched = await Promise.all(
+    sources.map(async (source) => ({
+      lane: source.lane,
+      tracks: await deezerPlaylistTracks(source.id, HEAD, 0),
+    })),
+  )
+
+  const lanes: Record<Lane, HearTrack[]> = {
+    classic: [],
+    nineties: [],
+    oughts: [],
+    tens: [],
+    recent: [],
+  }
+
+  for (const row of fetched) {
+    for (const track of row.tracks) {
+      if (seenIds.has(track.id) || isBrazilianTrack(track)) continue
+      const titleKey = normalizeGuess(songCoreTitle(track.title))
+      if (exclude && (titleKey === exclude || normalizeGuess(track.title) === exclude)) continue
+      lanes[row.lane].push(track)
+    }
+  }
+
+  for (const lane of Object.keys(lanes) as Lane[]) {
+    lanes[lane] = shuffle(lanes[lane])
+  }
+
+  const pool: HearTrack[] = []
   const usedTrack = new Set<string>()
   const usedArtist = new Set<string>()
-  const pool: HearTrack[] = []
+  let cursor = 0
+  let idle = 0
 
-  for (const track of shuffle(buckets.flat())) {
-    const key = trackKey(track)
-    const artist = normalizeGuess(track.artist)
-    const titleKey = normalizeGuess(songCoreTitle(track.title))
-    if (usedTrack.has(key) || usedArtist.has(artist) || seenIds.has(track.id)) continue
-    if (isBrazilianTrack(track)) continue
-    if (exclude && (titleKey === exclude || normalizeGuess(track.title) === exclude)) continue
-    usedTrack.add(key)
-    usedArtist.add(artist)
+  while (pool.length < 36 && idle < CYCLE.length * 4) {
+    const lane = CYCLE[cursor % CYCLE.length]
+    cursor += 1
+    const track = lane ? takeNext(lanes[lane], usedTrack, usedArtist) : null
+    if (!track) {
+      idle += 1
+      continue
+    }
+    idle = 0
+    usedTrack.add(trackKey(track))
+    usedArtist.add(normalizeGuess(track.artist))
     pool.push(track)
   }
 
-  return spaceArtists(shuffle(pool)).slice(0, 36)
+  if (pool.length < 36) {
+    const leftover = shuffle(Object.values(lanes).flat())
+    while (pool.length < 36) {
+      const track = takeNext(leftover, usedTrack, usedArtist)
+      if (!track) break
+      usedTrack.add(trackKey(track))
+      usedArtist.add(normalizeGuess(track.artist))
+      pool.push(track)
+    }
+  }
+
+  return spaceArtists(pool).slice(0, 36)
 }
 
 export type { HearTrack }

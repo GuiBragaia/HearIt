@@ -18,8 +18,8 @@ export function ProfileStats({ stats }: { stats?: PersonStats }) {
   ]
 
   return (
-    <div>
-      <div className="enter enter-3 grid grid-cols-2 gap-8 border-b border-[#1e231c] pb-8">
+    <div className="profile-stats">
+      <div className="profile-stats-hero enter enter-3">
         <div>
           <p className="display m-0 text-[clamp(56px,12vw,88px)] leading-none text-primary">{value.streak}</p>
           <p className="mt-2 mb-0 text-sm text-muted-foreground">{t.profile.streak}</p>
@@ -31,7 +31,7 @@ export function ProfileStats({ stats }: { stats?: PersonStats }) {
           <p className="mt-2 mb-0 text-sm text-muted-foreground">{t.profile.points}</p>
         </div>
       </div>
-      <div className="enter enter-4 mt-6 flex flex-wrap gap-x-8 gap-y-4">
+      <div className="profile-stats-more enter enter-4">
         {secondary.map((stat) => (
           <div key={stat.label} className="min-w-[92px]">
             <p className="m-0 text-xl tracking-tight">{stat.value}</p>

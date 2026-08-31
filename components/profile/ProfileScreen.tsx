@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { FavoriteArtists, ProfileCustomize, ProfileName, ProfilePhoto } from '@/components/profile/ProfileEdit'
+import { SavedTracks } from '@/components/profile/SavedTracks'
 import { FriendsList } from '@/components/profile/Friends'
 import { ProfileStats } from '@/components/profile/ProfileStats'
 import { AchievementGrid } from '@/components/profile/AchievementGrid'
@@ -107,7 +108,7 @@ export function ProfileScreen() {
           <ViewportWaveform className="play-hub-wave" />
         </section>
       ) : (
-        <section className="mx-auto w-full max-w-[880px] px-5 pb-20 pt-8">
+        <section className="profile-page">
           <div className="profile-head enter enter-1">
             <ProfilePhoto
               photo={user.photo}
@@ -134,42 +135,52 @@ export function ProfileScreen() {
             </button>
           </div>
 
-          <ProfileStats />
-          <FriendsList />
-          <FavoriteArtists value={user.favorites} editable />
+          <div className="profile-panel enter enter-3">
+            <ProfileStats />
+          </div>
 
-          <div className="enter enter-6 mt-14">
+          <div className="profile-pair">
+            <div className="profile-panel enter enter-4">
+              <FriendsList />
+            </div>
+            <div className="profile-panel enter enter-5">
+              <FavoriteArtists value={user.favorites} editable />
+            </div>
+          </div>
+
+          <div className="profile-panel enter enter-5">
+            <SavedTracks value={user.savedTracks ?? []} editable />
+          </div>
+
+          <div className="profile-panel enter enter-6">
             <AchievementGrid />
           </div>
 
-          <div className="enter enter-7 mt-16">
-            <div className="mb-5 flex items-end justify-between">
-              <h2 className="m-0 text-base font-medium tracking-tight">{t.profile.history}</h2>
+          <div className="profile-panel enter enter-7">
+            <div className="profile-panel-head">
+              <h2>{t.profile.history}</h2>
             </div>
             {plays.length === 0 ? (
-              <p className="text-sm text-muted-foreground">{t.states.emptyPlays}</p>
+              <p className="profile-panel-empty">{t.states.emptyPlays}</p>
             ) : (
-              <ol className="relative m-0 list-none border-l border-[#2a3126] p-0">
+              <ol className="profile-plays">
                 {plays.map((play) => {
                   const song = songById(play.songId)
                   return (
-                    <li key={`${play.day}-${play.songId}`} className="relative py-4 pl-6">
-                      <span
-                        className={cn(
-                          'absolute top-[22px] left-[-4px] size-2',
-                          play.won ? 'bg-primary' : 'bg-[#5a403c]',
-                        )}
-                      />
-                      <p className="m-0 text-xs text-[#6d7568]">
-                        {play.day === today ? t.profile.today : playDayLabel(play.day, today, locale)}
-                      </p>
-                      <p className="mt-1 mb-0 text-[15px] tracking-tight">{song?.title ?? play.songId}</p>
-                      <p className="mt-1 mb-0 flex items-center justify-between gap-3 text-[12px] text-muted-foreground">
-                        <span>{song?.artist ?? ''}</span>
-                        <b className={cn('text-xs font-medium', play.won ? 'text-primary' : 'text-[#b07a74]')}>
-                          {play.won ? t.profile.hit : t.profile.skip}
-                        </b>
-                      </p>
+                    <li key={`${play.day}-${play.songId}`} className="profile-play">
+                      <span className={cn('profile-play-dot', play.won ? 'is-hit' : 'is-miss')} />
+                      <div>
+                        <p className="profile-play-day">
+                          {play.day === today ? t.profile.today : playDayLabel(play.day, today, locale)}
+                        </p>
+                        <p className="profile-play-title">{song?.title ?? play.songId}</p>
+                        <p className="profile-play-meta">
+                          <span>{song?.artist ?? ''}</span>
+                          <b className={play.won ? 'is-hit' : 'is-miss'}>
+                            {play.won ? t.profile.hit : t.profile.skip}
+                          </b>
+                        </p>
+                      </div>
                     </li>
                   )
                 })}

@@ -1,5 +1,6 @@
 import { sanitizeFavoriteIds } from '@/lib/artists'
 import { isOffensiveName } from '@/lib/profanity'
+import type { SavedTrack } from '@/lib/saved-tracks'
 
 export type SessionUser = {
   id: string
@@ -10,6 +11,7 @@ export type SessionUser = {
   createdAt: number
   photo?: string
   favorites: string[]
+  savedTracks: SavedTrack[]
   friends: string[]
   outgoing: string[]
   incoming: string[]

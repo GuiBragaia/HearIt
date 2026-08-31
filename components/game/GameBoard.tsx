@@ -5,7 +5,7 @@ import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useEffect, useRef, useState } from 'react'
 import { PlaybackButton } from '@/components/audio/PlaybackButton'
 import { Waveform } from '@/components/audio/Waveform'
-import { useTrackPlayer } from '@/components/audio/use-track-player'
+import { forgetPreview, useTrackPlayer } from '@/components/audio/use-track-player'
 import { usePlaying } from '@/components/layout/playing-context'
 import { QuietError } from '@/components/states/QuietError'
 import { HearLoading } from '@/components/states/HearLoading'
@@ -56,7 +56,11 @@ export function GameBoard() {
   const timers = useRef<number[]>([])
 
   const duration = CLIP_LENGTHS[Math.min(level, CLIP_LENGTHS.length - 1)]
-  const player = useTrackPlayer(duration)
+  const player = useTrackPlayer(duration, {
+    id: dailySong.id,
+    title: dailySong.title,
+    artist: dailySong.artist,
+  })
   const locked =
     phase === 'wrong' || phase === 'correct' || phase === 'perfect' || phase === 'failed' || phase === 'result'
   const won = score > 0
@@ -179,7 +183,9 @@ export function GameBoard() {
       if (player.playing) player.pause()
       else if (won || phase === 'failed' || phase === 'result') await player.playFull({ resume: true })
       else await player.playClip()
-    } catch {
+    } catch (err) {
+      if (err instanceof DOMException && (err.name === 'NotAllowedError' || err.name === 'AbortError')) return
+      forgetPreview(dailySong.id)
       setError(true)
     }
   }
@@ -227,8 +233,9 @@ export function GameBoard() {
     return (
       <QuietError
         onRetry={() => {
+          forgetPreview(dailySong.id)
           setError(false)
-          void player.playClip()
+          void player.playClip().catch(() => setError(true))
         }}
       />
     )

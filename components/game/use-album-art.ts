@@ -14,7 +14,7 @@ export function useAlbumArt() {
       title: song.title,
       artist: song.artist,
     })
-    void fetch(`/api/daily-track?${params}`, { cache: 'force-cache' })
+    void fetch(`/api/daily-track?${params}`, { cache: 'no-store' })
       .then((response) => response.json())
       .then((track: { artworkUrl?: string | null }) => {
         if (live) setSrc(track.artworkUrl ?? null)

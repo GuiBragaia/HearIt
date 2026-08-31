@@ -267,7 +267,7 @@ export function FavoriteArtists({
   return (
     <div className="profile-favs">
       <p className="profile-favs-kicker">{t.profile.favorites}</p>
-      <ol className="fav-rank">
+      <ol className="fav-rank is-cards">
         {slots.map((index) => {
           const artist = artistById(value[index] ?? '')
           const place = index + 1

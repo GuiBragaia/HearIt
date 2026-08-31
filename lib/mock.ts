@@ -3,6 +3,7 @@ export type Song = {
   title: string
   artist: string
   aliases: string[]
+  deezerId?: number
 }
 
 export type LeaderboardRow = {
@@ -86,6 +87,7 @@ export const catalog: Song[] = [
     id: 'scream-and-shout',
     title: 'Scream & Shout',
     artist: 'Britney Spears',
+    deezerId: 62439051,
     aliases: [
       'scream and shout',
       'scream shout',

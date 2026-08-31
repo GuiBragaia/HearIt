@@ -4,7 +4,7 @@ export async function loadNonstopQueue(input: { favs: string[]; exclude: string;
   const params = new URLSearchParams()
   if (input.exclude) params.set('exclude', input.exclude)
   if (input.favs.length) params.set('favs', input.favs.join(','))
-  if (input.seen.length) params.set('seen', input.seen.slice(-80).join(','))
+  if (input.seen.length) params.set('seen', input.seen.slice(-200).join(','))
   const response = await fetch(`/api/nonstop?${params}`, { cache: 'no-store' })
   if (!response.ok) throw new Error('queue')
   const data = (await response.json()) as { tracks?: HearTrack[] }
@@ -14,7 +14,7 @@ export async function loadNonstopQueue(input: { favs: string[]; exclude: string;
 export async function previewReady(url: string) {
   if (!url) return false
   try {
-    const response = await fetch(url, { cache: 'force-cache' })
+    const response = await fetch(url, { cache: 'no-store' })
     return response.ok
   } catch {
     return false

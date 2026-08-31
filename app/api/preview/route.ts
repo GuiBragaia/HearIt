@@ -1,4 +1,4 @@
-import { deezerJson } from '@/lib/deezer'
+import { deezerFresh } from '@/lib/deezer'
 
 const ALLOWED_HOST = /(^|\.)dzcdn\.net$/i
 
@@ -6,7 +6,7 @@ async function sourceUrl(request: Request) {
   const url = new URL(request.url)
   const id = url.searchParams.get('id')
   if (id && /^\d{1,12}$/.test(id)) {
-    const track = await deezerJson<{ preview?: string }>(`/track/${id}`)
+    const track = await deezerFresh<{ preview?: string }>(`/track/${id}`)
     const preview = track?.preview?.trim()
     if (!preview) return null
     return new URL(preview)
@@ -32,7 +32,7 @@ export async function GET(request: Request) {
     const upstream = await fetch(parsed, {
       signal: controller.signal,
       headers: { Accept: 'audio/mpeg,audio/*;q=0.9,*/*;q=0.8', Referer: '' },
-      cache: 'force-cache',
+      cache: 'no-store',
     })
     if (!upstream.ok || !upstream.body) return new Response(null, { status: 404 })
     const headers = new Headers()

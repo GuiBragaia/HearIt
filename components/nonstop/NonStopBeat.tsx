@@ -4,6 +4,7 @@ import { motion, useReducedMotion } from 'motion/react'
 import { PlaybackButton } from '@/components/audio/PlaybackButton'
 import { ViewportWaveform } from '@/components/audio/ViewportWaveform'
 import { AlbumCover } from '@/components/game/AlbumCover'
+import { SaveTrackButton } from '@/components/game/SaveTrackButton'
 import { LogoMark } from '@/components/layout/Logo'
 import { useI18n } from '@/lib/i18n'
 import type { HearTrack } from '@/lib/deezer'
@@ -48,6 +49,7 @@ export function NonStopBeat({
         <AlbumCover src={track.artworkUrl} alt={`${track.title} — ${track.artist}`} won={won} playing={playing} />
         <div className="result-listen">
           <PlaybackButton playing={playing} onToggle={onTogglePlay} kind="song" />
+          <SaveTrackButton id={track.id} title={track.title} artist={track.artist} artworkUrl={track.artworkUrl} />
         </div>
         <p className="result-note mt-6">
           {named} {named === 1 ? t.nonstop.namedOne : t.nonstop.named}

@@ -138,6 +138,40 @@ function RemoveFriendButton({ person, onRemove }: { person: Person; onRemove: (i
   )
 }
 
+function FriendKeepButton({ person, onRemove }: { person: Person; onRemove: (id: string) => void }) {
+  const { t } = useI18n()
+  const [open, setOpen] = useState(false)
+
+  return (
+    <>
+      <button
+        type="button"
+        className="profile-edit friend-keep"
+        aria-label={t.profile.friendRemove}
+        onClick={() => setOpen(true)}
+      >
+        <span className="friend-keep-on" aria-hidden>
+          <UserCheck size={12} strokeWidth={2.2} />
+          {t.profile.friendsWith}
+        </span>
+        <span className="friend-keep-off" aria-hidden>
+          <UserMinus size={12} strokeWidth={2.2} />
+          {t.profile.friendRemove}
+        </span>
+      </button>
+      <FriendRemoveConfirm
+        open={open}
+        kicker={person.handle}
+        onCancel={() => setOpen(false)}
+        onConfirm={() => {
+          setOpen(false)
+          onRemove(person.id)
+        }}
+      />
+    </>
+  )
+}
+
 export function FriendButton({ personId }: { personId: string }) {
   const { t } = useI18n()
   const { user, requestFriend, cancelRequest, declineFriend } = useSession()
@@ -171,17 +205,17 @@ export function FriendButton({ personId }: { personId: string }) {
   const leaving = gone === person.id
 
   if (status === 'friends' || (hearing && status === 'incoming') || leaving) {
+    if (status === 'friends' && !hearing && !leaving) {
+      return <FriendKeepButton person={person} onRemove={fade} />
+    }
     return (
-      <span className="profile-friend-actions">
-        <span className="friend-ear is-action">
-          <span className={cn('profile-edit is-on', hearing && 'is-hear', leaving && 'is-gone')}>
-            <UserCheck size={12} strokeWidth={2.2} />
-            {t.profile.friendsWith}
-          </span>
-          {hearing ? <FriendHear /> : null}
-          {leaving ? <FriendGone /> : null}
+      <span className="friend-ear is-action">
+        <span className={cn('profile-edit is-on', hearing && 'is-hear', leaving && 'is-gone')}>
+          <UserCheck size={12} strokeWidth={2.2} />
+          {t.profile.friendsWith}
         </span>
-        {status === 'friends' && !leaving ? <RemoveFriendButton person={person} onRemove={fade} /> : null}
+        {hearing ? <FriendHear /> : null}
+        {leaving ? <FriendGone /> : null}
       </span>
     )
   }

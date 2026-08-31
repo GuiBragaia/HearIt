@@ -1,6 +1,7 @@
 import { dailyKey } from '@/lib/game'
 import { emptyStats, personFromRow, statsFromRow, type Person } from '@/lib/people'
 import { sanitizeFavoriteIds } from '@/lib/artists'
+import { sanitizeSavedTracks, type SavedTrack } from '@/lib/saved-tracks'
 import { displayNameFromOauth, photoFromOauth } from '@/lib/oauth'
 import {
   initialsFromName,
@@ -20,6 +21,7 @@ type ProfileRow = {
   display_name: string
   photo_url: string | null
   favorites: string[] | null
+  saved_tracks?: unknown
   points: number
   streak: number
   best_streak: number
@@ -61,6 +63,7 @@ export function sessionFromProfile(
     createdAt: new Date(row.created_at).getTime(),
     photo: row.photo_url || undefined,
     favorites: sanitizeFavoriteIds(row.favorites),
+    savedTracks: [],
     friends: lists.friends,
     outgoing: lists.outgoing,
     incoming: lists.incoming,
@@ -140,9 +143,13 @@ export async function loadFriendLists(userId: string): Promise<FriendLists> {
 }
 
 export async function loadSessionUser(userId: string, email: string) {
-  const [row, lists] = await Promise.all([fetchProfileRow(userId), loadFriendLists(userId)])
+  const [row, lists, savedTracks] = await Promise.all([
+    fetchProfileRow(userId),
+    loadFriendLists(userId),
+    loadSavedTracks(userId),
+  ])
   if (!row) return null
-  return sessionFromProfile(row, email, lists)
+  return { ...sessionFromProfile(row, email, lists), savedTracks }
 }
 
 export async function waitForSessionUser(userId: string, email: string) {
@@ -213,6 +220,57 @@ export async function patchProfile(
   const { data, error } = await db.from('profiles').update(patch).eq('id', userId).select(PROFILE_COLS).maybeSingle()
   if (error || !data) return null
   return data as ProfileRow
+}
+
+function asSavedRows(tracks: SavedTrack[]) {
+  return tracks.map((track) => ({
+    track_id: track.id,
+    title: track.title,
+    artist: track.artist,
+    artwork_url: track.artworkUrl,
+    saved_at: new Date(track.savedAt || Date.now()).toISOString(),
+  }))
+}
+
+function fromSavedRows(rows: Array<{ track_id?: string; title?: string; artist?: string; artwork_url?: string | null; saved_at?: string }>) {
+  return sanitizeSavedTracks(
+    rows.map((row) => ({
+      id: row.track_id,
+      title: row.title,
+      artist: row.artist,
+      artworkUrl: row.artwork_url ?? null,
+      savedAt: row.saved_at ? Date.parse(row.saved_at) : 0,
+    })),
+  )
+}
+
+export async function loadSavedTracks(userId: string) {
+  const db = getSupabase()
+  if (!db) return []
+  const table = await db
+    .from('song_saves')
+    .select('track_id, title, artist, artwork_url, saved_at')
+    .eq('user_id', userId)
+    .order('saved_at', { ascending: false })
+  if (!table.error) return fromSavedRows(table.data ?? [])
+  const { data } = await db.from('profiles').select('saved_tracks').eq('id', userId).maybeSingle()
+  return sanitizeSavedTracks((data as { saved_tracks?: unknown } | null)?.saved_tracks)
+}
+
+export async function persistSavedTracks(userId: string, tracks: SavedTrack[]) {
+  const db = getSupabase()
+  if (!db) return false
+  const clean = sanitizeSavedTracks(tracks)
+  const wiped = await db.from('song_saves').delete().eq('user_id', userId)
+  if (!wiped.error) {
+    if (!clean.length) return true
+    const { error } = await db.from('song_saves').insert(
+      asSavedRows(clean).map((row) => ({ ...row, user_id: userId })),
+    )
+    return !error
+  }
+  const { error } = await db.from('profiles').update({ saved_tracks: clean }).eq('id', userId)
+  return !error
 }
 
 export async function uploadAvatar(userId: string, dataUrl: string) {

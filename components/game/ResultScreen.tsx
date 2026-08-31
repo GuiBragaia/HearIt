@@ -14,6 +14,7 @@ import { useSession } from '@/components/auth/session-context'
 import { PlaybackButton } from '@/components/audio/PlaybackButton'
 import { ScoreDisplay } from './ScoreDisplay'
 import { AlbumCover } from './AlbumCover'
+import { SaveTrackButton } from './SaveTrackButton'
 import { SecretReset } from './SecretReset'
 import { useAlbumArt } from './use-album-art'
 
@@ -100,6 +101,7 @@ export function ResultScreen({
 
         <div className="result-listen">
           <PlaybackButton playing={playing} onToggle={onTogglePlay} kind="song" />
+          <SaveTrackButton id={song.id} title={song.title} artist={song.artist} artworkUrl={art} />
         </div>
 
         <div className="result-stats">

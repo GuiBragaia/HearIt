@@ -60,7 +60,7 @@ export function PublicProfile() {
   }
 
   return (
-    <section className="mx-auto w-full max-w-[880px] px-5 pb-20 pt-8">
+    <section className="profile-page">
       <button type="button" className="profile-back enter enter-1" onClick={goBack}>
         <ChevronLeft size={16} strokeWidth={2} />
         {t.profile.back}
@@ -77,10 +77,15 @@ export function PublicProfile() {
         </div>
       </div>
 
-      <ProfileStats stats={person.stats} />
-      <FavoriteArtists value={person.favorites} />
+      <div className="profile-panel enter enter-3">
+        <ProfileStats stats={person.stats} />
+      </div>
 
-      <div className="enter enter-6 mt-14">
+      <div className="profile-panel enter enter-4">
+        <FavoriteArtists value={person.favorites} />
+      </div>
+
+      <div className="profile-panel enter enter-5">
         <AchievementGrid unlockedIds={person.unlocked} />
       </div>
     </section>

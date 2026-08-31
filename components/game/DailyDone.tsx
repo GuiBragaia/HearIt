@@ -14,6 +14,7 @@ import { type Song } from '@/lib/mock'
 import { useI18n } from '@/lib/i18n'
 import { cn, formatNumber } from '@/lib/utils'
 import { AlbumCover } from './AlbumCover'
+import { SaveTrackButton } from './SaveTrackButton'
 import { SecretReset } from './SecretReset'
 import { useAlbumArt } from './use-album-art'
 
@@ -105,6 +106,7 @@ export function DailyDone({
 
         <div className="result-listen">
           <PlaybackButton playing={playing} onToggle={onTogglePlay} kind="song" />
+          <SaveTrackButton id={song.id} title={song.title} artist={song.artist} artworkUrl={art} />
         </div>
 
         {user ? (

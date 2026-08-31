@@ -12,9 +12,18 @@ export type PlaySource = {
   artist?: string
 }
 
+export function forgetPreview(id?: string) {
+  if (id) previewBySong.delete(id)
+  else previewBySong.clear()
+}
+
+function previewKey(source?: PlaySource | null) {
+  return source?.id ?? songForDay().id
+}
+
 async function resolvePreviewUrl(source?: PlaySource) {
   const song = songForDay()
-  const key = source?.id ?? song.id
+  const key = previewKey(source)
   const hit = previewBySong.get(key)
   if (hit) return hit
 
@@ -32,7 +41,7 @@ async function resolvePreviewUrl(source?: PlaySource) {
     title: target.title,
     artist: target.artist,
   })
-  const response = await fetch(`/api/daily-track?${params}`, { cache: 'force-cache' })
+  const response = await fetch(`/api/daily-track?${params}`, { cache: 'no-store' })
   const track = (await response.json()) as { previewUrl?: string }
   if (!response.ok || !track.previewUrl) throw new Error('preview')
   previewBySong.set(key, track.previewUrl)
@@ -99,6 +108,7 @@ export function useTrackPlayer(clipUntil: number, source?: PlaySource | null) {
       const timer = window.setTimeout(() => {
         cleanup()
         assignedUrlRef.current = ''
+        forgetPreview(previewKey(sourceRef.current))
         reject(new Error('preview'))
       }, 10000)
       const onReady = () => {
@@ -110,6 +120,7 @@ export function useTrackPlayer(clipUntil: number, source?: PlaySource | null) {
         if (gen !== loadGenRef.current) return
         cleanup()
         assignedUrlRef.current = ''
+        forgetPreview(previewKey(sourceRef.current))
         reject(new Error('preview'))
       }
       const cleanup = () => {

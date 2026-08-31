@@ -25,6 +25,7 @@ import {
 import { useI18n } from '@/lib/i18n'
 import { loadNonstopQueue } from '@/lib/nonstop-queue'
 import { recordNonstopNamed } from '@/lib/nonstop-stats'
+import { readHeardIds, rememberHeardIds } from '@/lib/nonstop-heard'
 import { songForDay } from '@/lib/songs'
 import { cn } from '@/lib/utils'
 
@@ -66,9 +67,10 @@ export function NonStopBoard({ initialQueue }: { initialQueue: HearTrack[] }) {
   const [refill, setRefill] = useState(false)
   const levelRef = useRef(0)
   const timers = useRef<number[]>([])
-  const seenRef = useRef<string[]>([])
   const filling = useRef(false)
   const queueRef = useRef<HearTrack[]>([])
+  const heardUser = user?.id
+  const seenRef = useRef<string[]>(heardUser ? readHeardIds(heardUser) : [])
 
   const track = queue[0] ?? null
   const duration = CLIP_LENGTHS[Math.min(level, CLIP_LENGTHS.length - 1)]
@@ -108,14 +110,16 @@ export function NonStopBoard({ initialQueue }: { initialQueue: HearTrack[] }) {
         const incoming = await loadNonstopQueue({
           favs: favKey ? favKey.split(',') : [],
           exclude: dailySong.title,
-          seen: [...seenRef.current, ...current.map((item) => item.id)],
+          seen: [...(heardUser ? readHeardIds(heardUser) : []), ...seenRef.current, ...current.map((item) => item.id)],
         })
+        if (heardUser) rememberHeardIds(heardUser, incoming.map((item) => item.id))
+        seenRef.current = [...seenRef.current, ...incoming.map((item) => item.id)]
         return mergeTracks(current, incoming, new Set(seenRef.current))
       } finally {
         filling.current = false
       }
     },
-    [dailySong.title, favKey],
+    [dailySong.title, favKey, heardUser],
   )
 
   useEffect(() => {
@@ -235,6 +239,7 @@ export function NonStopBoard({ initialQueue }: { initialQueue: HearTrack[] }) {
     player.stop()
     setFeel(null)
     seenRef.current = [...seenRef.current, track.id]
+    if (heardUser) rememberHeardIds(heardUser, [track.id])
     setGuess('')
     setLevel(0)
     setHitThis(false)
