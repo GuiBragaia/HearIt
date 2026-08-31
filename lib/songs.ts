@@ -3,7 +3,7 @@ import { catalog, type Song } from '@/lib/mock'
 const EPOCH = Date.UTC(2026, 0, 1)
 
 /** Pin a catalog id to force today's Daily. Set to null to rotate. */
-const PINNED_DAILY_ID: string | null = 'i-want-it-that-way'
+const PINNED_DAILY_ID: string | null = 'scream-and-shout'
 
 export function songForDay(now = new Date()): Song {
   const pinned = PINNED_DAILY_ID ? catalog.find((item) => item.id === PINNED_DAILY_ID) : null

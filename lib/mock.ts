@@ -82,4 +82,17 @@ export const catalog: Song[] = [
       'i want it that way backstreet boys',
     ],
   },
+  {
+    id: 'scream-and-shout',
+    title: 'Scream & Shout',
+    artist: 'Britney Spears',
+    aliases: [
+      'scream and shout',
+      'scream shout',
+      'scream and shout britney',
+      'scream and shout britney spears',
+      'scream and shout will i am',
+      'scream and shout will.i.am',
+    ],
+  },
 ]
