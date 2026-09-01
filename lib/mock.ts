@@ -97,4 +97,17 @@ export const catalog: Song[] = [
       'scream and shout will.i.am',
     ],
   },
+  {
+    id: 'back-to-black',
+    title: 'Back To Black',
+    artist: 'Amy Winehouse',
+    deezerId: 2176856,
+    aliases: [
+      'back to black',
+      'back 2 black',
+      'back to black amy',
+      'back to black amy winehouse',
+      'back to black winehouse',
+    ],
+  },
 ]

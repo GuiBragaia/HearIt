@@ -38,6 +38,10 @@ export function isStudioTrack(input: { title?: string; artist?: string; album?: 
   return !isJunkRecording(input)
 }
 
+function wordsStartWith(value: string, needle: string) {
+  return value.split(' ').some((word) => word.startsWith(needle))
+}
+
 export function guessFitsQuery(query: string, hit: { title: string; artist: string }) {
   const needle = normalizeGuess(query)
   if (needle.length < 2) return true
@@ -53,4 +57,22 @@ export function guessFitsQuery(query: string, hit: { title: string; artist: stri
   if (tokens.length < 2) return false
   const blob = `${core} ${title} ${artist}`
   return tokens.every((token) => blob.includes(token))
+}
+
+/** Autocomplete only: short queries match artists, not title prefixes. */
+export function suggestionFitsQuery(query: string, hit: { title: string; artist: string }) {
+  const needle = normalizeGuess(query)
+  if (needle.length < 2) return false
+  const title = normalizeGuess(hit.title)
+  const core = normalizeGuess(songCoreTitle(hit.title))
+  const artist = normalizeGuess(hit.artist)
+
+  if (artist.startsWith(needle) || wordsStartWith(artist, needle)) return true
+
+  if (needle.length < 4) return false
+  if (core.startsWith(needle) || title.startsWith(needle)) return true
+  if (wordsStartWith(core, needle) || wordsStartWith(title, needle)) return true
+  if (title.includes(needle) || core.includes(needle)) return true
+  if (core.length >= 3 && artist.length >= 3 && needle.includes(core) && needle.includes(artist)) return true
+  return `${core} ${artist}`.includes(needle) || `${artist} ${core}`.includes(needle)
 }

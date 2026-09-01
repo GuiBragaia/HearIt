@@ -1,5 +1,4 @@
-import { catalog } from '@/lib/mock'
-import { artistsMatch, guessFitsQuery, isJunkArtist, isStudioTrack } from '@/lib/catalog-quality'
+import { artistsMatch, guessFitsQuery, isJunkArtist, isStudioTrack, suggestionFitsQuery } from '@/lib/catalog-quality'
 import { deezerArtistHits, deezerFindArtist, deezerJson, type HearTrack } from '@/lib/deezer'
 import { normalizeGuess, songCoreTitle } from '@/lib/game'
 
@@ -87,22 +86,6 @@ function artistLooksLikeQuery(query: string, artist: string) {
   return needle.length >= 4 && name.startsWith(needle)
 }
 
-function fromCatalog(query: string): GuessHit[] {
-  const needle = normalizeGuess(query)
-  if (needle.length < 2) return []
-  return catalog
-    .filter((song) => {
-      if (!isStudioTrack(song) || isJunkArtist(song.artist)) return false
-      if (guessFitsQuery(query, song)) return true
-      return song.aliases.some((alias) => normalizeGuess(alias).includes(needle))
-    })
-    .map((song) => ({
-      id: song.id,
-      title: song.title,
-      artist: song.artist,
-    }))
-}
-
 function mergeHits(groups: GuessHit[][]) {
   const seen = new Set<string>()
   const out: GuessHit[] = []
@@ -139,11 +122,14 @@ function rankSongs(hits: GuessHit[], query: string) {
       if (artist.includes(needle)) score += 4
       if (title.includes(needle) || core.includes(needle)) score += 3
       if (hit.artwork) score += 1
-      if (!hit.id.startsWith('dz-')) score += 10
       return { hit, score }
     })
     .sort((a, b) => b.score - a.score)
     .map((item) => item.hit)
+}
+
+function asSuggestions(hits: GuessHit[], term: string) {
+  return rankSongs(hits, term).filter((hit) => suggestionFitsQuery(term, hit))
 }
 
 export async function searchGuesses(query: string): Promise<GuessHit[]> {
@@ -151,7 +137,6 @@ export async function searchGuesses(query: string): Promise<GuessHit[]> {
   if (term.length < 2) return []
 
   const needle = normalizeGuess(term)
-  const local = fromCatalog(term)
   const [trackData, named] = await Promise.all([
     deezerJson<{ data?: DeezerSong[] }>(`/search/track?q=${encodeURIComponent(term)}&limit=25`),
     needle.length >= 3 ? deezerFindArtist(term, 200_000) : Promise.resolve(null),
@@ -164,7 +149,7 @@ export async function searchGuesses(query: string): Promise<GuessHit[]> {
     const artist = normalizeGuess(hit.artist)
     return core.length >= 3 && artist.length >= 3 && needle.includes(core) && needle.includes(artist)
   })
-  if (combo.length) return rankSongs(mergeHits([local, keepCanonical(combo)]), term).slice(0, 8)
+  if (combo.length) return asSuggestions(keepCanonical(combo), term).slice(0, 8)
 
   const byArtist = fitted.filter((hit) => artistLooksLikeQuery(term, hit.artist))
   const titleExact = fitted.filter((hit) => normalizeGuess(songCoreTitle(hit.title)) === needle)
@@ -186,9 +171,5 @@ export async function searchGuesses(query: string): Promise<GuessHit[]> {
   )
 
   const remote = artistQuery ? mergeHits([fromArtist, keepCanonical(byArtist)]) : mergeHits([keepCanonical(fitted), byTitle])
-  return rankSongs(mergeHits([local, remote]), term).slice(0, 16)
-}
-
-export function catalogHits(query: string) {
-  return fromCatalog(query)
+  return asSuggestions(remote, term).slice(0, 16)
 }

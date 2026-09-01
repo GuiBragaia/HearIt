@@ -2,8 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { normalizeGuess, songCoreTitle } from '@/lib/game'
-import { guessFitsQuery } from '@/lib/catalog-quality'
-import { catalogHits, type GuessHit } from '@/lib/guess-search'
+import { suggestionFitsQuery } from '@/lib/catalog-quality'
+import { type GuessHit } from '@/lib/guess-search'
 import { useI18n } from '@/lib/i18n'
 
 function escapeRegExp(value: string) {
@@ -61,21 +61,19 @@ export function GuessInput({
   const [remote, setRemote] = useState<GuessHit[]>([])
   const queryId = useRef(0)
 
-  const local = useMemo(() => catalogHits(value), [value])
-
   const suggestions = useMemo(() => {
     const needle = normalizeGuess(value)
     const seen = new Set<string>()
     const out: GuessHit[] = []
-    const remoteFit = remote.filter((hit) => needle.length < SUGGEST_MIN || guessFitsQuery(value, hit))
-    for (const hit of [...local, ...remoteFit]) {
+    const remoteFit = remote.filter((hit) => needle.length < SUGGEST_MIN || suggestionFitsQuery(value, hit))
+    for (const hit of remoteFit) {
       const key = `${normalizeGuess(songCoreTitle(hit.title))}:${normalizeGuess(hit.artist)}`
       if (seen.has(key)) continue
       seen.add(key)
       out.push(hit)
     }
     return out.slice(0, 16)
-  }, [local, remote, value])
+  }, [remote, value])
 
   useEffect(() => {
     const query = value.trim()
