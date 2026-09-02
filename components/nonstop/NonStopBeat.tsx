@@ -6,12 +6,14 @@ import { ViewportWaveform } from '@/components/audio/ViewportWaveform'
 import { AlbumCover } from '@/components/game/AlbumCover'
 import { SaveTrackButton } from '@/components/game/SaveTrackButton'
 import { LogoMark } from '@/components/layout/Logo'
+import { clipCopy } from '@/lib/game'
 import { useI18n } from '@/lib/i18n'
 import type { HearTrack } from '@/lib/deezer'
 import { cn } from '@/lib/utils'
 
 export function NonStopBeat({
   won,
+  level,
   track,
   named,
   playing,
@@ -19,6 +21,7 @@ export function NonStopBeat({
   onNext,
 }: {
   won: boolean
+  level: number
   track: HearTrack
   named: number
   playing: boolean
@@ -42,7 +45,7 @@ export function NonStopBeat({
 
       <div className="result-body">
         <p className={cn('result-kicker', won ? 'is-hit' : 'is-miss')}>
-          {won ? t.game.youGotIt : t.game.failed}
+          {won ? clipCopy(t.game.hitAt, level) : t.game.failed}
         </p>
         <h2 className="result-title">{track.title}</h2>
         <p className="result-artist">{track.artist}</p>

@@ -16,6 +16,7 @@ import { useSession } from '@/components/auth/session-context'
 import type { HearTrack } from '@/lib/deezer'
 import {
   CLIP_LENGTHS,
+  clipCopy,
   formatDuration,
   matchesSong,
   skipDelta,
@@ -312,6 +313,7 @@ export function NonStopBoard({ initialQueue }: { initialQueue: HearTrack[] }) {
     return (
       <NonStopBeat
         won={hitThis}
+        level={level}
         track={track}
         named={named}
         playing={player.playing}
@@ -377,16 +379,14 @@ export function NonStopBoard({ initialQueue }: { initialQueue: HearTrack[] }) {
           </motion.p>
         </AnimatePresence>
 
-        {phase === 'perfect' ? (
-          <p className="daily-status is-hit is-perfect">{t.game.perfect}</p>
-        ) : clutchHit ? (
-          <p className="daily-status is-hit is-clutch">{t.game.clutch}</p>
-        ) : phase === 'correct' ? (
-          <p className="daily-status is-hit">{t.game.youGotIt}</p>
+        {hit ? (
+          <p className={cn('daily-status is-hit', perfectHit && 'is-perfect', clutchHit && 'is-clutch')}>
+            {clipCopy(t.game.hitAt, level)}
+          </p>
         ) : phase === 'wrong' ? (
           <p className="daily-status is-miss">
-            {t.game.notQuite}
-            <span>{t.game.hearMore}</span>
+            {clipCopy(t.game.missAt, level)}
+            {level < LAST_LEVEL ? <span>{t.game.hearMore}</span> : null}
           </p>
         ) : phase === 'failed' ? (
           <p className="daily-status is-miss">{t.game.failed}</p>

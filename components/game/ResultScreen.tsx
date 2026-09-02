@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { motion, useReducedMotion } from 'motion/react'
 import { ViewportWaveform } from '@/components/audio/ViewportWaveform'
 import { LogoMark } from '@/components/layout/Logo'
-import { formatDuration, nextResetLabel } from '@/lib/game'
+import { clipCopy, formatDuration, nextResetLabel } from '@/lib/game'
 import { dailyNumber } from '@/lib/songs'
 import type { Song } from '@/lib/mock'
 import { useI18n } from '@/lib/i18n'
@@ -25,6 +25,7 @@ export function ResultScreen({
   song,
   duration,
   score,
+  level,
   playing,
   onTogglePlay,
   onShare,
@@ -35,6 +36,7 @@ export function ResultScreen({
   song: Song
   duration: number
   score: number
+  level: number
   playing: boolean
   onTogglePlay: () => void
   onShare: () => void
@@ -84,7 +86,7 @@ export function ResultScreen({
           transition={{ delay }}
           className={cn('result-kicker', won ? 'is-hit' : 'is-miss')}
         >
-          {perfect ? t.game.perfectEar : clutch ? t.game.clutchEar : won ? t.game.youGotIt : t.game.failed}
+          {won ? clipCopy(t.game.hitAt, level) : t.game.failed}
         </motion.p>
 
         <motion.h2

@@ -87,6 +87,12 @@ export function spaceArtists<T extends { artist: string }>(tracks: T[], gap = 4,
   return out
 }
 
+export function clipCopy(lines: readonly string[], level: number) {
+  if (!lines.length) return ''
+  const index = Math.min(Math.max(0, level), lines.length - 1)
+  return lines[index] ?? lines[0] ?? ''
+}
+
 export function dailyKey(now = new Date()) {
   const year = now.getFullYear()
   const month = String(now.getMonth() + 1).padStart(2, '0')

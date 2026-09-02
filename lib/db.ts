@@ -319,6 +319,7 @@ export async function submitTodayRun(run: DailyRun) {
     p_score: run.score,
     p_duration: run.duration,
     p_level: run.level,
+    p_day: run.key,
   })
   if (error) return null
   return data
@@ -327,7 +328,7 @@ export async function submitTodayRun(run: DailyRun) {
 export async function resetTodayRunRemote() {
   const db = getSupabase()
   if (!db) return
-  await db.rpc('reset_today_run')
+  await db.rpc('reset_today_run', { p_day: dailyKey() })
 }
 
 export async function loadRecentRuns(userId: string, limit = 8) {

@@ -11,6 +11,7 @@ import { QuietError } from '@/components/states/QuietError'
 import { HearLoading } from '@/components/states/HearLoading'
 import {
   CLIP_LENGTHS,
+  clipCopy,
   dailyKey,
   formatDuration,
   matchesSong,
@@ -132,11 +133,28 @@ export function GameBoard() {
     [setPlaying, setFeel],
   )
 
+  const persistRun = (nextScore: number, nextLevel: number, wonNow: boolean) => {
+    void writeDailyRun(
+      {
+        key: dailyKey(),
+        songId: dailySong.id,
+        won: wonNow,
+        score: nextScore,
+        duration: CLIP_LENGTHS[Math.min(nextLevel, LAST_LEVEL)],
+        level: nextLevel,
+      },
+      user?.id,
+    ).then((saved) => {
+      if (saved && user?.id) void refresh()
+    })
+  }
+
   const goNextClip = () => {
     player.stop()
     setGuess('')
     if (levelRef.current >= CLIP_LENGTHS.length - 1) {
       setPhase('failed')
+      persistRun(0, LAST_LEVEL, false)
       later(() => setPhase('result'), reduce ? 0 : HOLD_FAILED)
       return
     }
@@ -158,7 +176,9 @@ export function GameBoard() {
     if (!text || locked) return
     if (next) setGuess(next)
     if (matchesSong(text, dailySong)) {
-      setScore(scoreForLevel(level))
+      const nextScore = scoreForLevel(level)
+      setScore(nextScore)
+      persistRun(nextScore, level, true)
       if (level === 0) {
         setPhase('perfect')
         later(() => setPhase('result'), reduce ? 0 : HOLD_PERFECT)
@@ -187,6 +207,7 @@ export function GameBoard() {
     if (locked) return
     setScore(0)
     setPhase('failed')
+    persistRun(0, level, false)
     void player.playFull().catch(() => undefined)
     later(() => setPhase('result'), reduce ? 0 : HOLD_FAILED)
   }
@@ -212,18 +233,16 @@ export function GameBoard() {
   useEffect(() => {
     if (boot || phase !== 'result') return
     clearDailyProgress()
-    void writeDailyRun(
-      {
-        key: dailyKey(),
-        songId: dailySong.id,
-        won: score > 0,
-        score,
-        duration,
-        level,
-      },
-      user?.id,
-    ).then(() => {
-      if (user?.id) void refresh()
+    const run = {
+      key: dailyKey(),
+      songId: dailySong.id,
+      won: score > 0,
+      score,
+      duration,
+      level,
+    }
+    void writeDailyRun(run, user?.id).then((saved) => {
+      if (saved && user?.id) void refresh()
     })
   }, [boot, phase, score, duration, level, dailySong.id, user?.id, refresh])
 
@@ -282,6 +301,7 @@ export function GameBoard() {
             song={dailySong}
             duration={duration}
             score={score}
+            level={level}
             playing={player.playing}
             onTogglePlay={() => void togglePlay()}
             onShare={() => setShareOpen(true)}
@@ -350,16 +370,14 @@ export function GameBoard() {
           </motion.p>
         </AnimatePresence>
 
-        {phase === 'perfect' ? (
-          <p className="daily-status is-hit is-perfect">{t.game.perfect}</p>
-        ) : clutchHit ? (
-          <p className="daily-status is-hit is-clutch">{t.game.clutch}</p>
-        ) : phase === 'correct' ? (
-          <p className="daily-status is-hit">{t.game.youGotIt}</p>
+        {hit ? (
+          <p className={cn('daily-status is-hit', perfectHit && 'is-perfect', clutchHit && 'is-clutch')}>
+            {clipCopy(t.game.hitAt, level)}
+          </p>
         ) : phase === 'wrong' ? (
           <p className="daily-status is-miss">
-            {t.game.notQuite}
-            <span>{t.game.hearMore}</span>
+            {clipCopy(t.game.missAt, level)}
+            {level < LAST_LEVEL ? <span>{t.game.hearMore}</span> : null}
           </p>
         ) : phase === 'failed' ? (
           <p className="daily-status is-miss">{t.game.failed}</p>

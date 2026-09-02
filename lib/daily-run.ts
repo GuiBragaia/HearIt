@@ -106,10 +106,11 @@ export async function writeDailyRun(run: DailyRun, userId?: string | null) {
   clearDailyProgress()
   if (userId && getSupabase()) {
     markClaimed(run, userId)
-    await submitTodayRun(run)
-    return
+    const saved = await submitTodayRun(run)
+    return Boolean(saved)
   }
   writeLocal(run)
+  return true
 }
 
 export async function claimGuestDailyRun(userId: string) {
