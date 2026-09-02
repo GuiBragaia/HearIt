@@ -1,16 +1,14 @@
 'use client'
 
-import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useId, useState, type ReactNode } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Eye, EyeOff } from 'lucide-react'
 import { ViewportWaveform } from '@/components/audio/ViewportWaveform'
 import { AuthHello, type AuthHelloKind } from '@/components/auth/AuthHello'
-import { AuthOauthWait } from '@/components/auth/AuthOauthWait'
 import { useSession } from '@/components/auth/session-context'
 import { LogoMark } from '@/components/layout/Logo'
 import { pickOffensiveLine, useI18n } from '@/lib/i18n'
-import { oauthHelloKind, openOauthPopup } from '@/lib/oauth'
 import { handleFromUsername, profileTitle } from '@/lib/session'
 import { waitForSessionUser } from '@/lib/db'
 import { getSupabase } from '@/lib/supabase'
@@ -31,7 +29,7 @@ type HelloState = { kind: AuthHelloKind; name: string; handle: string }
 export function AuthScreen({ mode }: { mode: 'join' | 'login' }) {
   const { t } = useI18n()
   const router = useRouter()
-  const { user, join, login, joinWith } = useSession()
+  const { user, join, login } = useSession()
   const [username, setUsername] = useState('')
   const [displayName, setDisplayName] = useState('')
   const [email, setEmail] = useState('')
@@ -40,12 +38,9 @@ export function AuthScreen({ mode }: { mode: 'join' | 'login' }) {
   const [error, setError] = useState<string | null>(null)
   const [errorField, setErrorField] = useState<AuthFieldName | null>(null)
   const [hello, setHello] = useState<HelloState | null>(null)
-  const [socialBusy, setSocialBusy] = useState(false)
   const [formBusy, setFormBusy] = useState(false)
   const [created, setCreated] = useState(false)
-  const [oauthWait, setOauthWait] = useState<'apple' | 'google' | null>(null)
   const [nextSuffix, setNextSuffix] = useState('')
-  const oauthPopup = useRef<Window | null>(null)
   const uid = useId()
 
   useEffect(() => {
@@ -54,17 +49,15 @@ export function AuthScreen({ mode }: { mode: 'join' | 'login' }) {
   }, [])
 
   useEffect(() => {
-    if (user && !hello && !socialBusy && !formBusy) router.replace(destPath())
-  }, [user, hello, router, socialBusy, formBusy])
+    if (user && !hello && !formBusy) router.replace(destPath())
+  }, [user, hello, router, formBusy])
 
   useEffect(() => {
     setError(null)
     setErrorField(null)
     setShowPassword(false)
-    setSocialBusy(false)
     setFormBusy(false)
     setCreated(false)
-    setOauthWait(null)
   }, [mode])
 
   const fail = (result: NonNullable<Awaited<ReturnType<typeof join>>>) => {
@@ -104,11 +97,6 @@ export function AuthScreen({ mode }: { mode: 'join' | 'login' }) {
     setErrorField(fields[result])
   }
 
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    if (new URLSearchParams(window.location.search).get('oauth')) fail('oauth')
-  }, [mode])
-
   const write = (field: AuthFieldName, next: string) => {
     if (field === 'username') setUsername(next.replace(/^@+/, ''))
     if (field === 'display') setDisplayName(next)
@@ -145,7 +133,7 @@ export function AuthScreen({ mode }: { mode: 'join' | 'login' }) {
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault()
-    if (formBusy || socialBusy) return
+    if (formBusy) return
     setFormBusy(true)
     setError(null)
     setErrorField(null)
@@ -167,32 +155,6 @@ export function AuthScreen({ mode }: { mode: 'join' | 'login' }) {
       handle,
     })
     setFormBusy(false)
-  }
-
-  const social = async (provider: 'apple' | 'google') => {
-    if (socialBusy || formBusy) return
-    const popup = openOauthPopup(provider)
-    oauthPopup.current = popup
-    setSocialBusy(true)
-    if (popup && !popup.closed) setOauthWait(provider)
-    const result = await joinWith(provider, popup)
-    oauthPopup.current = null
-    if (result === 'closed') {
-      setOauthWait(null)
-      setSocialBusy(false)
-      return
-    }
-    if (result) {
-      setOauthWait(null)
-      setSocialBusy(false)
-      fail(result)
-      return
-    }
-    setOauthWait(null)
-    const db = getSupabase()
-    const authUser = db ? (await db.auth.getUser()).data.user : null
-    await greet(authUser ? oauthHelloKind(authUser) : mode)
-    setSocialBusy(false)
   }
 
   return (
@@ -230,21 +192,6 @@ export function AuthScreen({ mode }: { mode: 'join' | 'login' }) {
         </div>
 
         <div className="auth-panel">
-          <div className="enter enter-4 auth-social">
-            <button type="button" className="auth-apple" disabled={socialBusy || formBusy} onClick={() => social('apple')}>
-              <AppleMark />
-              {t.auth.continueApple}
-            </button>
-            <button type="button" className="auth-google" disabled={socialBusy || formBusy} onClick={() => social('google')}>
-              <GoogleMark />
-              {t.auth.continueGoogle}
-            </button>
-          </div>
-
-          <p className="enter enter-5 auth-or">
-            <span>{t.auth.orEmail}</span>
-          </p>
-
           {created ? (
             <div className="enter enter-4 auth-created">
               <p className="auth-created-kicker">{t.auth.createdKicker}</p>
@@ -255,7 +202,7 @@ export function AuthScreen({ mode }: { mode: 'join' | 'login' }) {
               </Link>
             </div>
           ) : (
-          <form className="enter enter-6 auth-form" onSubmit={submit}>
+          <form className="enter enter-4 auth-form" onSubmit={submit}>
             <div className="auth-fields">
               {mode === 'join' ? (
                 <>
@@ -323,7 +270,7 @@ export function AuthScreen({ mode }: { mode: 'join' | 'login' }) {
               ) : null}
             </div>
             {error ? <p className="auth-error">{error}</p> : null}
-            <button type="submit" className="land-play auth-submit" disabled={formBusy || socialBusy}>
+            <button type="submit" className="land-play auth-submit" disabled={formBusy}>
               {formBusy
                 ? mode === 'join'
                   ? t.auth.creating
@@ -350,13 +297,6 @@ export function AuthScreen({ mode }: { mode: 'join' | 'login' }) {
         </div>
       </div>
 
-      <AuthOauthWait
-        open={Boolean(oauthWait)}
-        provider={oauthWait}
-        onCancel={() => {
-          oauthPopup.current?.close()
-        }}
-      />
       <AuthHello
         open={Boolean(hello)}
         kind={hello?.kind ?? 'login'}
@@ -433,27 +373,5 @@ function AuthField({
       </label>
       {children}
     </div>
-  )
-}
-
-function AppleMark() {
-  return (
-    <svg width="15" height="18" viewBox="0 0 14 17" aria-hidden>
-      <path
-        fill="currentColor"
-        d="M11.4 8.9c0-2 1.6-3 1.7-3.1-1-1.4-2.4-1.6-2.9-1.6-1.2-.1-2.4.7-3 .7-.6 0-1.6-.7-2.7-.7-1.4 0-2.7.8-3.4 2.1-1.5 2.5-.4 6.3 1 8.3.7 1 1.5 2.1 2.6 2.1 1 0 1.4-.7 2.7-.7s1.6.7 2.7.7c1.1 0 1.8-1 2.5-2 .8-1.1 1.1-2.2 1.1-2.2s-2.1-.8-2.3-3.6Zm-2.2-6.4c.6-.7 1-1.7.9-2.7-1 .1-2.1.7-2.8 1.5-.6.7-1.1 1.7-.9 2.6 1 0 2-.6 2.8-1.4Z"
-      />
-    </svg>
-  )
-}
-
-function GoogleMark() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 18 18" aria-hidden>
-      <path fill="#4285F4" d="M17.6 9.2c0-.6-.1-1.2-.2-1.8H9v3.4h4.8c-.2 1.1-.8 2-1.8 2.6v2.1h2.9c1.7-1.6 2.7-3.9 2.7-6.3Z" />
-      <path fill="#34A853" d="M9 18c2.4 0 4.5-.8 6-2.2l-2.9-2.1c-.8.6-1.9.9-3.1.9-2.4 0-4.4-1.6-5.1-3.8H.9v2.2C2.4 16.1 5.5 18 9 18Z" />
-      <path fill="#FBBC05" d="M3.9 10.8c-.2-.6-.3-1.2-.3-1.8s.1-1.2.3-1.8V5H.9C.3 6.2 0 7.6 0 9s.3 2.8.9 4l3-2.2Z" />
-      <path fill="#EA4335" d="M9 3.6c1.3 0 2.5.5 3.4 1.3l2.5-2.5C13.5.9 11.4 0 9 0 5.5 0 2.4 1.9.9 5l3 2.2C4.6 5.2 6.6 3.6 9 3.6Z" />
-    </svg>
   )
 }

@@ -1,4 +1,4 @@
-import { dailyKey } from '@/lib/game'
+import { CLIP_LENGTHS, dailyKey } from '@/lib/game'
 import { loadTodayRun, resetTodayRunRemote, submitTodayRun } from '@/lib/db'
 import { songForDay } from '@/lib/songs'
 import { getSupabase } from '@/lib/supabase'
@@ -14,7 +14,21 @@ export type DailyRun = {
 }
 
 const STORAGE_KEY = 'hear-it-daily-run'
+const PROGRESS_KEY = 'hear-it-daily-progress'
 export const DAILY_RESET_EVENT = 'hear-it-reset-daily'
+
+const LAST_LEVEL = CLIP_LENGTHS.length - 1
+
+function clampLevel(level: number) {
+  if (!Number.isFinite(level)) return 0
+  return Math.min(LAST_LEVEL, Math.max(0, Math.floor(level)))
+}
+
+type DailyProgress = {
+  key: string
+  songId: string
+  level: number
+}
 
 function readLocal(songId: string, now = new Date()): DailyRun | null {
   if (typeof window === 'undefined') return null
@@ -31,6 +45,35 @@ function readLocal(songId: string, now = new Date()): DailyRun | null {
 
 function writeLocal(run: DailyRun) {
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(run))
+}
+
+export function readDailyProgress(songId: string, now = new Date()) {
+  if (typeof window === 'undefined') return 0
+  try {
+    const raw = window.localStorage.getItem(PROGRESS_KEY)
+    if (!raw) return 0
+    const parsed = JSON.parse(raw) as DailyProgress
+    if (parsed.key !== dailyKey(now) || parsed.songId !== songId) return 0
+    return clampLevel(Number(parsed.level))
+  } catch {
+    return 0
+  }
+}
+
+export function writeDailyProgress(songId: string, level: number, now = new Date()) {
+  if (typeof window === 'undefined') return
+  const next = clampLevel(level)
+  if (next <= 0) {
+    window.localStorage.removeItem(PROGRESS_KEY)
+    return
+  }
+  const payload: DailyProgress = { key: dailyKey(now), songId, level: next }
+  window.localStorage.setItem(PROGRESS_KEY, JSON.stringify(payload))
+}
+
+export function clearDailyProgress() {
+  if (typeof window === 'undefined') return
+  window.localStorage.removeItem(PROGRESS_KEY)
 }
 
 function isClaimableBy(run: DailyRun, userId: string) {
@@ -60,6 +103,7 @@ export async function readDailyRun(songId: string, userId?: string | null) {
 }
 
 export async function writeDailyRun(run: DailyRun, userId?: string | null) {
+  clearDailyProgress()
   if (userId && getSupabase()) {
     markClaimed(run, userId)
     await submitTodayRun(run)
@@ -87,6 +131,7 @@ export async function claimGuestDailyRun(userId: string) {
 export function clearDailyRun() {
   if (typeof window === 'undefined') return
   window.localStorage.removeItem(STORAGE_KEY)
+  clearDailyProgress()
 }
 
 export async function resetDailyRun(userId?: string | null) {

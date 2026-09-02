@@ -1,4 +1,5 @@
 export const NAV_ITEMS = [
+  { href: '/play', key: 'play' as const },
   { href: '/daily', key: 'daily' as const },
   { href: '/plays', key: 'plays' as const },
   { href: '/online', key: 'online' as const, developing: true },

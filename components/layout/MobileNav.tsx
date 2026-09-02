@@ -2,12 +2,13 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Headphones, Swords, Trophy, UserRound, Zap } from 'lucide-react'
+import { Headphones, House, Swords, Trophy, UserRound, Zap } from 'lucide-react'
 import { useI18n } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
 import { useSession } from '@/components/auth/session-context'
 
 const ITEMS = [
+  { href: '/play', key: 'play' as const, icon: House, developing: false },
   { href: '/daily', key: 'daily' as const, icon: Headphones, developing: false },
   { href: '/plays', key: 'plays' as const, icon: Zap, developing: false },
   { href: '/online', key: 'online' as const, icon: Swords, developing: true },

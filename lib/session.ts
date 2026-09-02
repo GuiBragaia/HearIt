@@ -57,6 +57,7 @@ export function isGameDev(handle?: string | null) {
 
 const STREAMER_LINKS: Record<string, string> = {
   sr_kasai: 'https://www.twitch.tv/sr_kasai',
+  asemtet0: 'https://www.twitch.tv/asemtet0',
 }
 
 export function streamerUrl(handle?: string | null) {

@@ -18,7 +18,7 @@ import {
   skipDelta,
   type GamePhase,
 } from '@/lib/game'
-import { readDailyRun, writeDailyRun, DAILY_RESET_EVENT } from '@/lib/daily-run'
+import { readDailyRun, writeDailyRun, readDailyProgress, writeDailyProgress, clearDailyProgress, DAILY_RESET_EVENT } from '@/lib/daily-run'
 import { countPlayersToday } from '@/lib/db'
 import { useI18n } from '@/lib/i18n'
 import { songForDay } from '@/lib/songs'
@@ -90,10 +90,14 @@ export function GameBoard() {
     void readDailyRun(dailySong.id, user?.id).then((run) => {
       if (!live) return
       if (run) {
+        clearDailyProgress()
         setLevel(run.level)
         setScore(run.score)
         setPhase('result')
         setReturning(true)
+      } else {
+        const progress = readDailyProgress(dailySong.id)
+        if (progress > 0) setLevel(progress)
       }
       setBoot(false)
     })
@@ -135,7 +139,11 @@ export function GameBoard() {
       later(() => setPhase('result'), reduce ? 0 : HOLD_FAILED)
       return
     }
-    setLevel((value) => value + 1)
+    setLevel((value) => {
+      const next = value + 1
+      writeDailyProgress(dailySong.id, next)
+      return next
+    })
     setPhase('idle')
   }
 
@@ -191,7 +199,13 @@ export function GameBoard() {
   }
 
   useEffect(() => {
+    if (boot || phase === 'result') return
+    writeDailyProgress(dailySong.id, level)
+  }, [boot, phase, level, dailySong.id])
+
+  useEffect(() => {
     if (boot || phase !== 'result') return
+    clearDailyProgress()
     void writeDailyRun(
       {
         key: dailyKey(),
