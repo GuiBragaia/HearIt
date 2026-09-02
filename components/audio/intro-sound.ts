@@ -1,3 +1,5 @@
+import { getSettings } from '@/lib/settings'
+
 type AudioCtxCtor = typeof AudioContext
 
 function AudioCtor(): AudioCtxCtor | undefined {
@@ -81,7 +83,7 @@ export function playIntroSound(ctx: AudioContext, offset = 0) {
   const filter = ctx.createBiquadFilter()
   filter.type = 'lowpass'
   filter.frequency.value = 3400
-  master.gain.value = MASTER_GAIN
+  master.gain.value = MASTER_GAIN * (0.25 + getSettings().volume * 0.75)
   filter.connect(master)
   master.connect(ctx.destination)
 

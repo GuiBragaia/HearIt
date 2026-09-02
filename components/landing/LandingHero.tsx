@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { AnimatePresence, useReducedMotion } from 'motion/react'
 import { ViewportWaveform } from '@/components/audio/ViewportWaveform'
-import { LanguageSwitch } from '@/components/layout/LanguageSwitch'
+import { SettingsMenu } from '@/components/layout/SettingsMenu'
 import { Logo, LogoMark } from '@/components/layout/Logo'
 import { useI18n } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
@@ -41,7 +41,7 @@ export function LandingHero() {
       </div>
       <header className="enter enter-1 relative z-10 mx-auto flex w-full max-w-[1120px] items-center justify-between py-7">
         <Logo />
-        <LanguageSwitch />
+        <SettingsMenu />
       </header>
 
       <div className="relative z-10 mx-auto flex w-full max-w-[760px] flex-1 flex-col justify-center pt-4">

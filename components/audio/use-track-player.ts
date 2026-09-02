@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { songForDay } from '@/lib/songs'
+import { getSettings, subscribeSettings } from '@/lib/settings'
 
 const previewBySong = new Map<string, string>()
 
@@ -74,6 +75,7 @@ export function useTrackPlayer(clipUntil: number, source?: PlaySource | null) {
     if (!audioRef.current) {
       const node = new Audio()
       node.preload = 'auto'
+      node.volume = getSettings().volume
       node.setAttribute('playsinline', '')
       node.setAttribute('referrerpolicy', 'no-referrer')
       node.addEventListener('ended', () => {
@@ -87,6 +89,7 @@ export function useTrackPlayer(clipUntil: number, source?: PlaySource | null) {
     }
     const audio = audioRef.current
     const url = await resolvePreviewUrl(sourceRef.current ?? undefined)
+    audio.volume = getSettings().volume
     if (assignedUrlRef.current === url && audio.readyState >= 2) {
       setReady(true)
       return audio
@@ -263,6 +266,15 @@ export function useTrackPlayer(clipUntil: number, source?: PlaySource | null) {
     },
     [],
   )
+
+  useEffect(() => {
+    const apply = () => {
+      const audio = audioRef.current
+      if (audio) audio.volume = getSettings().volume
+    }
+    apply()
+    return subscribeSettings(apply)
+  }, [])
 
   useEffect(() => {
     if (modeRef.current === 'full') return

@@ -27,6 +27,7 @@ import { loadNonstopQueue } from '@/lib/nonstop-queue'
 import { recordNonstopNamed } from '@/lib/nonstop-stats'
 import { readHeardIds, rememberHeardIds } from '@/lib/nonstop-heard'
 import { songForDay } from '@/lib/songs'
+import { getSettings } from '@/lib/settings'
 import { cn } from '@/lib/utils'
 
 const HOLD_MISS = 2400
@@ -174,6 +175,11 @@ export function NonStopBoard({ initialQueue }: { initialQueue: HearTrack[] }) {
     }
     setLevel((value) => value + 1)
     setPhase('idle')
+    if (getSettings().autoplay) {
+      later(() => {
+        void player.playClip().catch(() => undefined)
+      }, 280)
+    }
   }
 
   const submitGuess = (next?: string) => {

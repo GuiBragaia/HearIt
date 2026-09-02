@@ -22,6 +22,7 @@ import { readDailyRun, writeDailyRun, readDailyProgress, writeDailyProgress, cle
 import { countPlayersToday } from '@/lib/db'
 import { useI18n } from '@/lib/i18n'
 import { songForDay } from '@/lib/songs'
+import { getSettings } from '@/lib/settings'
 import { useSession } from '@/components/auth/session-context'
 import { cn, formatNumber } from '@/lib/utils'
 import { DailyDone } from './DailyDone'
@@ -145,6 +146,11 @@ export function GameBoard() {
       return next
     })
     setPhase('idle')
+    if (getSettings().autoplay) {
+      later(() => {
+        void player.playClip().catch(() => undefined)
+      }, 280)
+    }
   }
 
   const submitGuess = (next?: string) => {

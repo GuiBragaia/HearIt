@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { getSettings } from '@/lib/settings'
 
 const LOOP = 2.05
 
@@ -21,7 +22,7 @@ function scheduleClip(ctx: AudioContext, duration: number) {
   const filter = ctx.createBiquadFilter()
   filter.type = 'lowpass'
   filter.frequency.value = 2200
-  master.gain.value = 0.2
+  master.gain.value = 0.2 * getSettings().volume
   filter.connect(master)
   master.connect(ctx.destination)
 

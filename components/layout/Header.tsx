@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useI18n } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
-import { LanguageSwitch } from './LanguageSwitch'
+import { SettingsMenu } from './SettingsMenu'
 import { Logo } from './Logo'
 import { NAV_ITEMS } from './nav'
 import { useSession } from '@/components/auth/session-context'
@@ -48,7 +48,7 @@ export function Header() {
             {t.nav.join}
           </Link>
         ) : null}
-        <LanguageSwitch />
+        <SettingsMenu />
       </div>
     </header>
   )
