@@ -2387,6 +2387,28 @@ button:disabled {
   padding: 6px 10px;
 }
 
+.streamer-badge {
+  position: relative;
+  z-index: 2;
+  background: #b48bff;
+  color: #140c1c;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.streamer-badge.is-hot,
+.streamer-badge:focus-visible {
+  background: #d2b6ff;
+  box-shadow:
+    0 0 0 1px rgba(180, 139, 255, 0.34),
+    0 8px 22px rgba(145, 70, 255, 0.3);
+}
+
+.streamer-badge .dev-badge-tip {
+  border-color: rgba(180, 139, 255, 0.34);
+  color: #d2b6ff;
+}
+
 .profile-name-meta {
   margin: 8px 0 0;
   color: var(--muted-foreground);

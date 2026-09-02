@@ -7,11 +7,11 @@ import { readPhotoFile, type PhotoDraft } from '@/lib/photo'
 import { artistById, artistFromToken, artists, slugifyArtist } from '@/lib/artists'
 import { OverlayPortal } from '@/components/overlay-portal'
 import { pickOffensiveLine, useI18n } from '@/lib/i18n'
-import { hasDisplayName, isGameDev, profileTitle } from '@/lib/session'
+import { hasDisplayName, profileTitle } from '@/lib/session'
 import { cn } from '@/lib/utils'
 import { ArtistThumb } from './ArtistThumb'
 import { Avatar } from './Avatar'
-import { DevBadge } from './DevBadge'
+import { NameBadges } from './NameBadges'
 import { PhotoCrop } from './PhotoCrop'
 import { PhotoView } from './PhotoView'
 
@@ -125,7 +125,7 @@ export function ProfileName({
     <div className="profile-name">
       <div className="profile-title-row">
         <h1 className="profile-title">{titled}</h1>
-        {isGameDev(handle) ? <DevBadge /> : null}
+        <NameBadges handle={handle} />
       </div>
       <p className="profile-name-meta">
         {custom ? (

@@ -192,6 +192,11 @@ const en = {
       'Fueled by coffee and bad ideas.',
       "Don't ask how it works.",
     ],
+    streamer: 'Live',
+    streamerHints: [
+      'Chat definitely carried.',
+      'Caution. May contain live streamer.',
+    ],
     week: 'Last few days',
     listening: 'Still going',
     guestKicker: 'You',
@@ -577,6 +582,11 @@ const pt: Dictionary = {
       'Feito com decisões questionáveis.',
       'Café e ideias ruins.',
       'Não pergunta como funciona.',
+    ],
+    streamer: 'Live',
+    streamerHints: [
+      'Certeza que o chat carregou',
+      'Cuidado. Pode conter streamer ao vivo.',
     ],
     week: 'Últimos dias',
     listening: 'Seguindo',

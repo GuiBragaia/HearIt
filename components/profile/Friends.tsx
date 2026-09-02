@@ -12,9 +12,8 @@ import { fetchPeople, fetchPerson, searchPeople } from '@/lib/db'
 import { profileHref, type Person } from '@/lib/people'
 import { HearLoading } from '@/components/states/HearLoading'
 import { useI18n } from '@/lib/i18n'
-import { isGameDev } from '@/lib/session'
 import { cn } from '@/lib/utils'
-import { DevBadge } from './DevBadge'
+import { NameBadges } from './NameBadges'
 
 const HEAR_HOLD = 640
 const HEAR_FLASH = 1500
@@ -24,7 +23,7 @@ function PersonTitle({ name, handle }: { name: string; handle: string }) {
   return (
     <strong>
       <span>{name || handle}</span>
-      {isGameDev(handle) ? <DevBadge compact /> : null}
+      <NameBadges handle={handle} compact />
     </strong>
   )
 }

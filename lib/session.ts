@@ -55,6 +55,15 @@ export function isGameDev(handle?: string | null) {
   return DEV_HANDLES.has(usernameFromHandle(handle))
 }
 
+const STREAMER_LINKS: Record<string, string> = {
+  sr_kasai: 'https://www.twitch.tv/sr_kasai',
+}
+
+export function streamerUrl(handle?: string | null) {
+  if (!handle) return null
+  return STREAMER_LINKS[usernameFromHandle(handle)] ?? null
+}
+
 export function initialsFromName(name: string) {
   const parts = cleanName(name).split(' ').filter(Boolean)
   if (parts.length === 0) return 'HI'

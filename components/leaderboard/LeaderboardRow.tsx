@@ -7,10 +7,9 @@ import type { LeaderboardRow } from '@/lib/mock'
 import { profileHref } from '@/lib/people'
 import { useSession } from '@/components/auth/session-context'
 import { Avatar } from '@/components/profile/Avatar'
-import { DevBadge } from '@/components/profile/DevBadge'
+import { NameBadges } from '@/components/profile/NameBadges'
 import { cn, formatNumber } from '@/lib/utils'
 import { useI18n } from '@/lib/i18n'
-import { isGameDev } from '@/lib/session'
 
 export function LeaderboardRowItem({
   row,
@@ -45,7 +44,7 @@ export function LeaderboardRowItem({
         <span className="min-w-0">
           <strong className="relative flex min-w-0 items-center gap-2 overflow-visible text-[15px] font-medium tracking-tight">
             <span className="truncate">{row.name}</span>
-            {isGameDev(row.handle) ? <DevBadge compact /> : null}
+            <NameBadges handle={row.handle} compact />
             {row.you ? <span className="shrink-0 text-xs font-normal text-primary">{t.leaderboard.you}</span> : null}
           </strong>
           <span className="mt-1 hidden text-xs text-[#6d7568] sm:block">
