@@ -110,4 +110,17 @@ export const catalog: Song[] = [
       'back to black winehouse',
     ],
   },
+  {
+    id: 'she-wolf',
+    title: 'She Wolf',
+    artist: 'Shakira',
+    deezerId: 3018798101,
+    aliases: [
+      'she wolf',
+      'shewolf',
+      'loba',
+      'she wolf shakira',
+      'loba shakira',
+    ],
+  },
 ]
