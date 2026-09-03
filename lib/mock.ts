@@ -73,6 +73,13 @@ export const catalog: Song[] = [
     ],
   },
   {
+    id: 'lithium',
+    title: 'Lithium',
+    artist: 'Nirvana',
+    deezerId: 13791934,
+    aliases: ['lithium nirvana', 'nirvana lithium'],
+  },
+  {
     id: 'i-want-it-that-way',
     title: 'I Want It That Way',
     artist: 'Backstreet Boys',
