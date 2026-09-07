@@ -7,10 +7,13 @@ import { ChevronLeft } from 'lucide-react'
 import { FavoriteArtists, ProfileName, ProfilePhoto } from '@/components/profile/ProfileEdit'
 import { FriendButton } from '@/components/profile/Friends'
 import { ProfileStats } from '@/components/profile/ProfileStats'
-import { AchievementGrid } from '@/components/profile/AchievementGrid'
-import { fetchPerson, fetchProfileByHandle } from '@/lib/db'
+import { AchievementGrid, ShownBadges } from '@/components/profile/AchievementGrid'
+import { ProfileBanner } from '@/components/profile/ProfileBanner'
+import { DailyPlays, DailyToday } from '@/components/profile/DailyPlays'
+import { fetchPerson, fetchProfileByHandle, loadDayRun, loadRecentRuns, type RecentRun } from '@/lib/db'
 import { useSession } from '@/components/auth/session-context'
 import { type Person } from '@/lib/people'
+import type { DailyRun } from '@/lib/daily-run'
 import { HearLoading } from '@/components/states/HearLoading'
 import { useI18n } from '@/lib/i18n'
 
@@ -23,6 +26,9 @@ export function PublicProfile() {
   const { user } = useSession()
   const id = params.id ?? ''
   const [person, setPerson] = useState<Person | null | undefined>(undefined)
+  const [today, setToday] = useState<DailyRun | null>(null)
+  const [plays, setPlays] = useState<RecentRun[]>([])
+  const [dailyReady, setDailyReady] = useState(false)
 
   useEffect(() => {
     if (id === 'you' || (user && (id === user.id || id === user.handle.replace(/^@/, '')))) {
@@ -38,6 +44,26 @@ export function PublicProfile() {
       live = false
     }
   }, [id, user, router])
+
+  useEffect(() => {
+    if (!person) {
+      setToday(null)
+      setPlays([])
+      setDailyReady(false)
+      return
+    }
+    let live = true
+    setDailyReady(false)
+    void Promise.all([loadDayRun(person.id), loadRecentRuns(person.id, 3)]).then(([day, rows]) => {
+      if (!live) return
+      setToday(day)
+      setPlays(rows)
+      setDailyReady(true)
+    })
+    return () => {
+      live = false
+    }
+  }, [person])
 
   const goBack = () => router.back()
 
@@ -60,20 +86,29 @@ export function PublicProfile() {
   }
 
   return (
-    <section className="profile-page">
-      <button type="button" className="profile-back enter enter-1" onClick={goBack}>
-        <ChevronLeft size={16} strokeWidth={2} />
-        {t.profile.back}
-      </button>
-      <div className="profile-head enter enter-2">
-        <ProfilePhoto
-          photo={person.photo}
-          initials={person.initials}
-          viewer={{ name: person.name, handle: person.handle }}
-        />
-        <div className="min-w-0 flex-1">
-          <ProfileName name={person.name} handle={person.handle} since={person.memberSince} />
-          <FriendButton personId={person.id} />
+    <section className="profile-page has-banner">
+      <div className="profile-hero enter enter-1">
+        <div className="profile-hero-art">
+          <button type="button" className="profile-back is-over" onClick={goBack}>
+            <ChevronLeft size={16} strokeWidth={2} />
+            {t.profile.back}
+          </button>
+          <ProfileBanner bannerUrl={person.banner} favoriteId={person.favorites[0]} />
+        </div>
+        <div className="profile-head">
+          <div className="profile-hero-face">
+            <ProfilePhoto
+              photo={person.photo}
+              initials={person.initials}
+              size="lg"
+              viewer={{ name: person.name, handle: person.handle }}
+            />
+          </div>
+          <div className="profile-head-copy">
+            <ProfileName name={person.name} handle={person.handle} since={person.memberSince} />
+            <ShownBadges ids={person.shownBadges} unlocked={person.unlocked} />
+            <FriendButton personId={person.id} />
+          </div>
         </div>
       </div>
 
@@ -81,12 +116,21 @@ export function PublicProfile() {
         <ProfileStats stats={person.stats} />
       </div>
 
+      {dailyReady ? (
+        <div className="profile-panel enter enter-4">
+          <DailyToday run={today} />
+          <div className="profile-daily-gap">
+            <DailyPlays plays={plays} empty={t.states.emptyPlaysOther} title={t.profile.historyOther} />
+          </div>
+        </div>
+      ) : null}
+
       <div className="profile-panel enter enter-4">
         <FavoriteArtists value={person.favorites} />
       </div>
 
       <div className="profile-panel enter enter-5">
-        <AchievementGrid unlockedIds={person.unlocked} />
+        <AchievementGrid unlockedIds={person.unlocked} shownBadges={person.shownBadges} />
       </div>
     </section>
   )

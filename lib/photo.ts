@@ -63,3 +63,16 @@ export function exportCrop(
   ctx.drawImage(image, -crop.x / crop.scale, -crop.y / crop.scale, source, source, 0, 0, output, output)
   return canvas.toDataURL('image/jpeg', 0.86)
 }
+
+export function exportBanner(image: HTMLImageElement, width = 1280, height = 400) {
+  const canvas = document.createElement('canvas')
+  canvas.width = width
+  canvas.height = height
+  const ctx = canvas.getContext('2d')
+  if (!ctx) throw new Error('canvas')
+  const scale = Math.max(width / image.width, height / image.height)
+  const dw = image.width * scale
+  const dh = image.height * scale
+  ctx.drawImage(image, (width - dw) / 2, (height - dh) / 2, dw, dh)
+  return canvas.toDataURL('image/jpeg', 0.86)
+}

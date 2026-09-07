@@ -10,6 +10,7 @@ import {
   type SessionUser,
 } from '@/lib/session'
 import { sanitizeSavedTracks } from '@/lib/saved-tracks'
+import { sanitizeShownBadges, unlockedAchievements } from '@/lib/achievements'
 import { friendStatus } from '@/lib/friends'
 import {
   acceptFriend as acceptRemote,
@@ -20,6 +21,8 @@ import {
   persistSavedTracks,
   requestFriend as requestRemote,
   uploadAvatar,
+  uploadBanner,
+  deleteOwnAccount,
   waitForSessionUser,
 } from '@/lib/db'
 import { isOauthMessage, markOauthPopup, OAUTH_SOURCE } from '@/lib/oauth'
@@ -50,8 +53,11 @@ type SessionValue = {
   login: (input: { email: string; password: string }) => Promise<AuthError | null>
   joinWith: (provider: 'apple' | 'google', popup?: Window | null) => Promise<AuthError | null>
   logout: () => Promise<void>
+  deleteAccount: () => Promise<boolean>
   refresh: () => Promise<void>
-  updateProfile: (patch: Partial<Pick<SessionUser, 'photo' | 'favorites' | 'name'>>) => Promise<AuthError | null>
+  updateProfile: (
+    patch: Partial<Pick<SessionUser, 'photo' | 'banner' | 'favorites' | 'name' | 'shownBadges'>>,
+  ) => Promise<AuthError | null>
   saveLibrary: (tracks: SessionUser['savedTracks']) => Promise<boolean>
   requestFriend: (id: string) => Promise<void>
   cancelRequest: (id: string) => Promise<void>
@@ -299,6 +305,11 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         if (db) await db.auth.signOut()
         setUser(null)
       },
+      deleteAccount: async () => {
+        const ok = await deleteOwnAccount()
+        if (ok) setUser(null)
+        return ok
+      },
       refresh,
       updateProfile: async (patch) => {
         if (!user) return 'missing'
@@ -316,13 +327,29 @@ export function SessionProvider({ children }: { children: ReactNode }) {
             photo = undefined
           }
         }
+        let banner = user.banner
+        if (patch.banner !== undefined) {
+          if (patch.banner) {
+            const uploaded = await uploadBanner(user.id, patch.banner)
+            if (!uploaded) return 'missing'
+            banner = uploaded
+          } else {
+            banner = undefined
+          }
+        }
         const name = patch.name !== undefined ? cleanDisplayName(patch.name) : user.name
         const favorites = patch.favorites !== undefined ? sanitizeFavoriteIds(patch.favorites) : user.favorites
-        setUser({ ...user, name, photo, favorites })
+        const shownBadges =
+          patch.shownBadges !== undefined
+            ? sanitizeShownBadges(patch.shownBadges, unlockedAchievements(user.stats))
+            : user.shownBadges
+        setUser({ ...user, name, photo, banner, favorites, shownBadges })
         const row = await patchProfile(user.id, {
           display_name: name,
           favorites,
           photo_url: photo ?? null,
+          banner_url: banner ?? null,
+          shown_badges: shownBadges,
         })
         if (!row) {
           setUser(user)

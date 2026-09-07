@@ -15,17 +15,32 @@ export type LeaderboardRow = {
   score: number
   time: number
   streak: number
+  rank: number
   you?: boolean
   region: 'global' | 'friends'
 }
 
 export type AchievementId =
+  | 'first-blood'
   | 'perfect-ear'
   | 'lightning'
-  | 'music-nerd'
-  | 'unstoppable'
-  | 'no-mercy'
+  | 'ten-club'
   | 'never-give-up'
+  | 'week-streak'
+  | 'sharp'
+  | 'music-nerd'
+  | 'echo'
+  | 'no-mercy'
+  | 'century'
+  | 'clutch-ten'
+  | 'unstoppable'
+  | 'one-shot-king'
+  | 'two-hundred'
+  | 'gold-ear'
+  | 'ghost-ear'
+  | 'year-one'
+  | 'mythic'
+  | 'vinyl'
 
 export type Achievement = {
   id: AchievementId
@@ -128,6 +143,76 @@ export const catalog: Song[] = [
       'loba',
       'she wolf shakira',
       'loba shakira',
+    ],
+  },
+  {
+    id: 'gummy-bear',
+    title: 'I Am a Gummy Bear',
+    artist: 'Gummibär',
+    deezerId: 3241542621,
+    aliases: [
+      'i am a gummy bear',
+      'i am gummy bear',
+      "i'm a gummy bear",
+      'im a gummy bear',
+      'gummy bear',
+      'the gummy bear song',
+      'ursinho gummy',
+      'osito gominola',
+      'eu sou o gummy bear',
+    ],
+  },
+  {
+    id: 'killer-queen',
+    title: 'Killer Queen',
+    artist: 'Queen',
+    deezerId: 4091936641,
+    aliases: ['killer queen queen', 'queen killer queen'],
+  },
+  {
+    id: 'hey-jude',
+    title: 'Hey Jude',
+    artist: 'The Beatles',
+    deezerId: 126848613,
+    aliases: ['hey jude beatles', 'heyjude'],
+  },
+  {
+    id: 'the-chain',
+    title: 'The Chain',
+    artist: 'Fleetwood Mac',
+    deezerId: 63480992,
+    aliases: ['the chain fleetwood mac', 'chain fleetwood', 'the chain fleetwood'],
+  },
+  {
+    id: 'back-in-black',
+    title: 'Back in Black',
+    artist: 'AC/DC',
+    deezerId: 92720046,
+    aliases: [
+      'back in black',
+      'back in black acdc',
+      'back in black ac/dc',
+      'back to black acdc',
+    ],
+  },
+  {
+    id: 'alright',
+    title: 'Alright',
+    artist: 'Kendrick Lamar',
+    deezerId: 97206068,
+    aliases: ['all right', 'alright kendrick', 'kendrick alright', 'alright kendrick lamar'],
+  },
+  {
+    id: 'bye-bye-bye',
+    title: 'Bye Bye Bye',
+    artist: '*NSYNC',
+    deezerId: 632447,
+    aliases: [
+      'bye bye',
+      'bye bye bye',
+      'bye bye bye nsync',
+      'bye bye nsync',
+      'nsync bye bye bye',
     ],
   },
 ]

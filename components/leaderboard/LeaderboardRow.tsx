@@ -13,12 +13,12 @@ import { useI18n } from '@/lib/i18n'
 
 export function LeaderboardRowItem({
   row,
-  index,
   locale,
+  pts,
 }: {
   row: LeaderboardRow
-  index: number
   locale: 'en' | 'pt'
+  pts?: string
 }) {
   const { t } = useI18n()
   const { user } = useSession()
@@ -26,18 +26,20 @@ export function LeaderboardRowItem({
   const initials = row.you
     ? (user?.initials ?? row.name.slice(0, 2).toUpperCase())
     : (row.initials ?? row.name.slice(0, 2).toUpperCase())
+  const place = String(row.rank).padStart(row.rank >= 100 ? 3 : 2, '0')
+  const ptsLabel = pts ?? t.leaderboard.pts
 
   return (
     <Link
       href={profileHref(row.handle ?? row.id, row.you)}
       prefetch={false}
       className={cn(
-        'grid grid-cols-[48px_1fr_auto] items-center gap-4 py-4 text-foreground no-underline sm:grid-cols-[56px_1fr_72px_108px]',
+        'grid grid-cols-[64px_1fr_auto] items-center gap-4 py-4 text-foreground no-underline sm:grid-cols-[72px_1fr_72px_108px]',
         row.you && 'bg-primary/[0.06]',
       )}
     >
       <span className={cn('display text-[22px] leading-none', row.you ? 'text-primary' : 'text-[#5c6358]')}>
-        {String(index + 1).padStart(2, '0')}
+        {place}
       </span>
       <span className="flex min-w-0 items-center gap-3">
         <Avatar src={photo} initials={initials} size="sm" />
@@ -58,7 +60,7 @@ export function LeaderboardRowItem({
       </span>
       <b className={cn('text-right text-[15px] tracking-tight', row.you && 'text-primary')}>
         {formatNumber(row.score, locale)}
-        <small className="ml-1 text-[11px] font-normal text-[#6d7568]">{t.leaderboard.pts}</small>
+        <small className="ml-1 text-[11px] font-normal text-[#6d7568]">{ptsLabel}</small>
       </b>
     </Link>
   )

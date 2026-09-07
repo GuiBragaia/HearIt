@@ -129,13 +129,209 @@ function NeverGiveUp() {
   )
 }
 
+function FirstBlood() {
+  return (
+    <Circle>
+      <circle cx="40" cy="40" r="7" fill="currentColor" />
+      <circle cx="40" cy="40" r="16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeOpacity="0.55" />
+    </Circle>
+  )
+}
+
+function TenClub() {
+  return (
+    <Circle>
+      {Array.from({ length: 10 }, (_, index) => {
+        const angle = (Math.PI * 2 * index) / 10 - Math.PI / 2
+        return <circle key={index} cx={40 + Math.cos(angle) * 18} cy={40 + Math.sin(angle) * 18} r="2.4" fill="currentColor" />
+      })}
+    </Circle>
+  )
+}
+
+function WeekStreak() {
+  return (
+    <Circle>
+      {Array.from({ length: 7 }, (_, index) => (
+        <rect
+          key={index}
+          x={16 + index * 7.2}
+          y={index === 6 ? 22 : 32}
+          width="5.2"
+          height={index === 6 ? 36 : 26}
+          rx="1.6"
+          fill="currentColor"
+          opacity={0.35 + index * 0.09}
+        />
+      ))}
+    </Circle>
+  )
+}
+
+function Sharp() {
+  return (
+    <Circle>
+      <path d="M40 14 L62 54 H18 Z" fill="none" stroke="currentColor" strokeWidth="1.8" />
+      <path d="M40 26 L52 50 H28 Z" fill="currentColor" opacity="0.85" />
+    </Circle>
+  )
+}
+
+function Echo() {
+  return (
+    <Circle>
+      <path d="M28 28 C28 22 52 22 52 28 C52 40 28 38 28 52 C28 58 52 58 52 52" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+      <circle cx="28" cy="28" r="2.4" fill="currentColor" />
+      <circle cx="52" cy="52" r="2.4" fill="currentColor" />
+    </Circle>
+  )
+}
+
+function Century() {
+  return (
+    <Circle>
+      <text x="40" y="47" textAnchor="middle" fill="currentColor" fontSize="18" fontWeight="700" letterSpacing="-0.08em">
+        10k
+      </text>
+    </Circle>
+  )
+}
+
+function ClutchTen() {
+  const ladder = [10, 14, 18, 24, 30, 36, 40, 44, 48, 52]
+  return (
+    <Circle open>
+      {ladder.map((height, index) => (
+        <rect
+          key={index}
+          x={14 + index * 5.3}
+          y={66 - height}
+          width="3.8"
+          height={height}
+          rx="1.4"
+          fill="currentColor"
+          opacity={index === 9 ? 1 : 0.22 + index * 0.07}
+        />
+      ))}
+    </Circle>
+  )
+}
+
+function OneShotKing() {
+  return (
+    <Circle>
+      <circle cx="40" cy="40" r="20" fill="none" stroke="currentColor" strokeWidth="1.2" strokeOpacity="0.3" />
+      <circle cx="40" cy="40" r="12" fill="none" stroke="currentColor" strokeWidth="1.2" strokeOpacity="0.5" />
+      <circle cx="40" cy="40" r="4" fill="currentColor" />
+      <rect x="39.2" y="10" width="1.6" height="12" rx="0.8" fill="currentColor" />
+    </Circle>
+  )
+}
+
+function TwoHundred() {
+  return (
+    <Circle>
+      {Array.from({ length: 12 }, (_, index) => (
+        <circle
+          key={index}
+          cx={40 + Math.cos((index / 12) * Math.PI * 2) * 18}
+          cy={40 + Math.sin((index / 12) * Math.PI * 2) * 18}
+          r={index % 3 === 0 ? 3.2 : 1.6}
+          fill="currentColor"
+          opacity={index % 3 === 0 ? 1 : 0.4}
+        />
+      ))}
+    </Circle>
+  )
+}
+
+function GoldEar() {
+  return (
+    <>
+      <polygon
+        points="40,8 70,24 70,56 40,72 10,56 10,24"
+        fill="currentColor"
+        fillOpacity="0.06"
+      />
+      <polygon
+        points="40,8 70,24 70,56 40,72 10,56 10,24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.3"
+        strokeOpacity="0.4"
+      />
+      <circle cx="40" cy="40" r="12" fill="none" stroke="currentColor" strokeWidth="1.6" />
+      <circle cx="40" cy="40" r="5" fill="currentColor" />
+    </>
+  )
+}
+
+function GhostEar() {
+  return (
+    <Circle dashed>
+      <path
+        d="M26 46 C26 28 54 28 54 46 C54 58 50 62 46 58 C43 64 37 64 34 58 C30 62 26 58 26 46 Z"
+        fill="currentColor"
+        opacity="0.9"
+      />
+      <circle cx="34" cy="42" r="2" fill="#0c100c" />
+      <circle cx="46" cy="42" r="2" fill="#0c100c" />
+    </Circle>
+  )
+}
+
+function YearOne() {
+  return (
+    <Circle>
+      <circle cx="40" cy="40" r="18" fill="none" stroke="currentColor" strokeWidth="1.4" />
+      <path d="M40 40 L40 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <path d="M40 40 L52 40" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" opacity="0.55" />
+    </Circle>
+  )
+}
+
+function Mythic() {
+  return (
+    <>
+      <polygon points="40,10 66,28 58,60 22,60 14,28" fill="currentColor" fillOpacity="0.06" />
+      <polygon points="40,10 66,28 58,60 22,60 14,28" fill="none" stroke="currentColor" strokeWidth="1.3" strokeOpacity="0.45" />
+      <polygon points="40,22 52,32 48,48 32,48 28,32" fill="currentColor" />
+    </>
+  )
+}
+
+function Vinyl() {
+  return (
+    <Circle>
+      <circle cx="40" cy="40" r="24" fill="none" stroke="currentColor" strokeWidth="2.2" />
+      <circle cx="40" cy="40" r="16" fill="none" stroke="currentColor" strokeWidth="1" strokeOpacity="0.4" />
+      <circle cx="40" cy="40" r="8" fill="none" stroke="currentColor" strokeWidth="1" strokeOpacity="0.3" />
+      <circle cx="40" cy="40" r="3.2" fill="currentColor" />
+    </Circle>
+  )
+}
+
 const MARKS: Record<AchievementId, () => ReactNode> = {
+  'first-blood': FirstBlood,
   'perfect-ear': PerfectEar,
   lightning: Lightning,
-  'music-nerd': MusicNerd,
-  unstoppable: Unstoppable,
-  'no-mercy': NoMercy,
+  'ten-club': TenClub,
   'never-give-up': NeverGiveUp,
+  'week-streak': WeekStreak,
+  sharp: Sharp,
+  'music-nerd': MusicNerd,
+  echo: Echo,
+  'no-mercy': NoMercy,
+  century: Century,
+  'clutch-ten': ClutchTen,
+  unstoppable: Unstoppable,
+  'one-shot-king': OneShotKing,
+  'two-hundred': TwoHundred,
+  'gold-ear': GoldEar,
+  'ghost-ear': GhostEar,
+  'year-one': YearOne,
+  mythic: Mythic,
+  vinyl: Vinyl,
 }
 
 export function BadgeMark({ id }: { id: AchievementId }) {

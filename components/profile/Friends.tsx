@@ -14,10 +14,18 @@ import { HearLoading } from '@/components/states/HearLoading'
 import { useI18n } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
 import { NameBadges } from './NameBadges'
+import { Pager } from './Pager'
 
 const HEAR_HOLD = 640
 const HEAR_FLASH = 1500
 const GONE_HOLD = 1560
+const FRIEND_PAGE = 4
+
+function matchesPerson(person: Person, query: string) {
+  const token = query.trim().toLowerCase().replace(/^@/, '')
+  if (!token) return true
+  return person.name.toLowerCase().includes(token) || person.handle.toLowerCase().includes(token)
+}
 
 function PersonTitle({ name, handle }: { name: string; handle: string }) {
   return (
@@ -261,7 +269,12 @@ export function FriendsList() {
   const [query, setQuery] = useState('')
   const [hits, setHits] = useState<Person[]>([])
   const [loading, setLoading] = useState(true)
+  const [page, setPage] = useState(0)
   const grouped = asks.length > 0 || sent.length > 0
+  const filtered = useMemo(() => friends.filter((person) => matchesPerson(person, query)), [friends, query])
+  const pages = Math.max(1, Math.ceil(filtered.length / FRIEND_PAGE))
+  const safePage = Math.min(page, pages - 1)
+  const visible = filtered.slice(safePage * FRIEND_PAGE, safePage * FRIEND_PAGE + FRIEND_PAGE)
 
   const friendKey = useMemo(
     () => `${(user?.friends ?? []).join(',')}|${(user?.incoming ?? []).join(',')}|${(user?.outgoing ?? []).join(',')}`,
@@ -316,6 +329,10 @@ export function FriendsList() {
       window.clearTimeout(timer)
     }
   }, [query, user?.id])
+
+  useEffect(() => {
+    setPage(0)
+  }, [query, friendKey])
 
   return (
     <div className="profile-friends">
@@ -422,26 +439,33 @@ export function FriendsList() {
       ) : friends.length > 0 ? (
         <>
           {grouped ? <p className="profile-friends-sub">{t.profile.friendsWith}</p> : null}
-          <ul className="profile-friends-list">
-            {friends.map((person) => {
-              const hearing = heard === person.id
-              const leaving = gone === person.id
-              return (
-                <motion.li key={person.id} layout={!reduce} layoutId={reduce ? undefined : `ear-${person.id}`} transition={rowSpring}>
-                  <div className={cn('profile-friend is-ask', hearing && 'is-hear', leaving && 'is-gone')}>
-                    <Link href={profileHref(person.handle)} prefetch={false} className="profile-friend-id">
-                      <FriendEar person={person} gone={leaving} />
-                      <span className="min-w-0">
-                        <PersonTitle name={person.name} handle={person.handle} />
-                        <b>{leaving ? t.profile.friendGone : person.handle}</b>
-                      </span>
-                    </Link>
-                    {leaving ? null : <RemoveFriendButton person={person} onRemove={fade} />}
-                  </div>
-                </motion.li>
-              )
-            })}
-          </ul>
+          {filtered.length === 0 ? (
+            <p className="profile-friends-empty">{t.profile.searchFriendsEmpty}</p>
+          ) : (
+            <>
+              <ul className="profile-friends-list">
+                {visible.map((person) => {
+                  const hearing = heard === person.id
+                  const leaving = gone === person.id
+                  return (
+                    <motion.li key={person.id} layout={!reduce} layoutId={reduce ? undefined : `ear-${person.id}`} transition={rowSpring}>
+                      <div className={cn('profile-friend is-ask', hearing && 'is-hear', leaving && 'is-gone')}>
+                        <Link href={profileHref(person.handle)} prefetch={false} className="profile-friend-id">
+                          <FriendEar person={person} gone={leaving} />
+                          <span className="min-w-0">
+                            <PersonTitle name={person.name} handle={person.handle} />
+                            <b>{leaving ? t.profile.friendGone : person.handle}</b>
+                          </span>
+                        </Link>
+                        {leaving ? null : <RemoveFriendButton person={person} onRemove={fade} />}
+                      </div>
+                    </motion.li>
+                  )
+                })}
+              </ul>
+              <Pager page={safePage} pages={pages} onPage={setPage} />
+            </>
+          )}
         </>
       ) : null}
         </>

@@ -1,3 +1,4 @@
+import { addIsoDays, previousWeekWindow, saoPauloDay, weekWindow } from '@/lib/calendar'
 import { dailyKey } from '@/lib/game'
 import { emptyStats, personFromRow, statsFromRow, type Person } from '@/lib/people'
 import { sanitizeFavoriteIds } from '@/lib/artists'
@@ -11,15 +12,18 @@ import {
 import { getSupabase } from '@/lib/supabase'
 import type { DailyRun } from '@/lib/daily-run'
 import type { LeaderboardRow } from '@/lib/mock'
+import { sanitizeShownBadges, unlockedAchievements } from '@/lib/achievements'
 
 const PROFILE_COLS =
-  'id, handle, display_name, photo_url, favorites, points, streak, best_streak, songs_guessed, songs_played, perfect_guesses, clutch_guesses, lightning_guesses, sum_clip, last_played_on, created_at'
+  'id, handle, display_name, photo_url, banner_url, shown_badges, favorites, points, streak, best_streak, songs_guessed, songs_played, perfect_guesses, clutch_guesses, lightning_guesses, sum_clip, last_played_on, created_at'
 
 type ProfileRow = {
   id: string
   handle: string
   display_name: string
   photo_url: string | null
+  banner_url?: string | null
+  shown_badges?: string[] | null
   favorites: string[] | null
   saved_tracks?: unknown
   points: number
@@ -54,6 +58,7 @@ export function sessionFromProfile(
 ): SessionUser {
   const handle = `@${row.handle}`
   const name = row.display_name?.trim() ?? ''
+  const stats = statsFromRow(row)
   return {
     id: row.id,
     name,
@@ -62,13 +67,15 @@ export function sessionFromProfile(
     initials: initialsFromName(name || row.handle),
     createdAt: new Date(row.created_at).getTime(),
     photo: row.photo_url || undefined,
+    banner: row.banner_url || undefined,
+    shownBadges: sanitizeShownBadges(row.shown_badges, unlockedAchievements(stats)),
     favorites: sanitizeFavoriteIds(row.favorites),
     savedTracks: [],
     friends: lists.friends,
     outgoing: lists.outgoing,
     incoming: lists.incoming,
     named: Boolean(name),
-    stats: statsFromRow(row),
+    stats,
   }
 }
 
@@ -213,7 +220,13 @@ export async function dropFriendship(userId: string, otherId: string) {
 
 export async function patchProfile(
   userId: string,
-  patch: { display_name?: string; favorites?: string[]; photo_url?: string | null },
+  patch: {
+    display_name?: string
+    favorites?: string[]
+    photo_url?: string | null
+    banner_url?: string | null
+    shown_badges?: string[]
+  },
 ) {
   const db = getSupabase()
   if (!db) return null
@@ -288,6 +301,30 @@ export async function uploadAvatar(userId: string, dataUrl: string) {
   return `${data.publicUrl}?t=${Date.now()}`
 }
 
+export async function uploadBanner(userId: string, dataUrl: string) {
+  const db = getSupabase()
+  if (!db) return null
+  const blob = await (await fetch(dataUrl)).blob()
+  const path = `${userId}/banner.jpg`
+  const { error } = await db.storage.from('avatars').upload(path, blob, {
+    upsert: true,
+    contentType: 'image/jpeg',
+    cacheControl: '3600',
+  })
+  if (error) return null
+  const { data } = db.storage.from('avatars').getPublicUrl(path)
+  return `${data.publicUrl}?t=${Date.now()}`
+}
+
+export async function deleteOwnAccount() {
+  const db = getSupabase()
+  if (!db) return false
+  const { error } = await db.rpc('delete_own_account')
+  if (error) return false
+  await db.auth.signOut()
+  return true
+}
+
 export async function loadTodayRun(userId: string, songId: string): Promise<DailyRun | null> {
   const db = getSupabase()
   if (!db) return null
@@ -300,6 +337,27 @@ export async function loadTodayRun(userId: string, songId: string): Promise<Dail
     .maybeSingle()
   if (error || !data) return null
   if (data.song_id !== songId) return null
+  return {
+    key: data.day as string,
+    songId: data.song_id as string,
+    won: Boolean(data.won),
+    score: Number(data.score),
+    duration: Number(data.duration),
+    level: Number(data.level),
+  }
+}
+
+export async function loadDayRun(userId: string): Promise<DailyRun | null> {
+  const db = getSupabase()
+  if (!db) return null
+  const day = dailyKey()
+  const { data, error } = await db
+    .from('daily_runs')
+    .select('song_id, won, score, duration, level, day')
+    .eq('user_id', userId)
+    .eq('day', day)
+    .maybeSingle()
+  if (error || !data) return null
   return {
     key: data.day as string,
     songId: data.song_id as string,
@@ -331,12 +389,21 @@ export async function resetTodayRunRemote() {
   await db.rpc('reset_today_run', { p_day: dailyKey() })
 }
 
-export async function loadRecentRuns(userId: string, limit = 8) {
+export type RecentRun = {
+  day: string
+  songId: string
+  won: boolean
+  score: number
+  duration: number
+  level: number
+}
+
+export async function loadRecentRuns(userId: string, limit = 5): Promise<RecentRun[]> {
   const db = getSupabase()
-  if (!db) return [] as Array<{ day: string; songId: string; won: boolean }>
+  if (!db) return []
   const { data, error } = await db
     .from('daily_runs')
-    .select('day, song_id, won')
+    .select('day, song_id, won, score, duration, level')
     .eq('user_id', userId)
     .order('day', { ascending: false })
     .limit(limit)
@@ -345,6 +412,9 @@ export async function loadRecentRuns(userId: string, limit = 8) {
     day: row.day as string,
     songId: row.song_id as string,
     won: Boolean(row.won),
+    score: Number(row.score) || 0,
+    duration: Number(row.duration) || 0,
+    level: Number(row.level) || 0,
   }))
 }
 
@@ -375,63 +445,71 @@ export async function recapToday(score: number) {
   return { rank, beat, players }
 }
 
-function rangeFrom(range: 'week' | 'month' | 'all') {
-  const now = new Date()
-  if (range === 'all') return null
-  const days = range === 'week' ? 7 : 30
-  const from = new Date(now)
-  from.setDate(now.getDate() - days + 1)
-  return dailyKey(from)
+function rangeBounds(range: 'week' | 'month' | 'all') {
+  if (range === 'all') return { from: null as string | null, to: null as string | null }
+  if (range === 'week') {
+    const week = weekWindow()
+    return { from: week.start, to: week.end }
+  }
+  const today = saoPauloDay()
+  return { from: addIsoDays(today, -29), to: addIsoDays(today, 1) }
 }
 
-export async function loadLeaderboard(
-  range: 'week' | 'month' | 'all',
+const BOARD_SIZE = 80
+
+export type LeaderboardBoard = {
+  rows: LeaderboardRow[]
+  you: LeaderboardRow | null
+  total: number
+}
+
+function rowFromPerson(
+  person: Person,
+  score: number,
+  time: number,
+  streak: number,
+  board: 'global' | 'friends',
+  youId: string | undefined,
+  rank: number,
+): LeaderboardRow {
+  return {
+    id: person.id,
+    name: person.name || person.handle,
+    handle: person.handle,
+    photo: person.photo,
+    initials: person.initials,
+    score,
+    time,
+    streak,
+    rank,
+    you: person.id === youId,
+    region: board,
+  }
+}
+
+function packBoard(ranked: LeaderboardRow[]): LeaderboardBoard {
+  return {
+    rows: ranked.slice(0, BOARD_SIZE),
+    you: ranked.find((row) => row.you) ?? null,
+    total: ranked.length,
+  }
+}
+
+export type WeekChampions = {
+  rows: LeaderboardRow[]
+  week: { start: string; end: string }
+}
+
+type RunAgg = { user_id: string; score: number; duration: number; won: boolean }
+
+async function boardFromRuns(
+  runRows: RunAgg[],
   board: 'global' | 'friends',
   youId?: string,
-  friendIds: string[] = [],
-): Promise<LeaderboardRow[]> {
-  const db = getSupabase()
-  if (!db) return []
-
-  const from = rangeFrom(range)
-  let userIds: string[] | null = null
-  if (board === 'friends') {
-    userIds = youId ? [...friendIds, youId] : [...friendIds]
-    if (!userIds.length) return []
-  }
-
-  if (range === 'all') {
-    let query = db.from('profiles').select(PROFILE_COLS).order('points', { ascending: false }).limit(80)
-    if (userIds) query = query.in('id', userIds)
-    const { data, error } = await query
-    if (error || !data) return []
-    return (data as ProfileRow[])
-      .filter((row) => row.points > 0 || row.id === youId)
-      .map((row) => {
-        const person = personFromRow(row)
-        const stats = statsFromRow(row)
-        return {
-          id: row.id,
-          name: person.name || person.handle,
-          handle: person.handle,
-          photo: person.photo,
-          initials: person.initials,
-          score: stats.points,
-          time: stats.averageTime,
-          streak: stats.streak,
-          you: row.id === youId,
-          region: board,
-        } satisfies LeaderboardRow
-      })
-  }
-
-  let runs = db.from('daily_runs').select('user_id, score, duration, won').gte('day', from)
-  if (userIds) runs = runs.in('user_id', userIds)
-  const { data: runRows, error: runError } = await runs
-  if (runError || !runRows) return []
-
+): Promise<LeaderboardBoard> {
+  const empty: LeaderboardBoard = { rows: [], you: null, total: 0 }
   const totals = new Map<string, { score: number; time: number; wins: number }>()
-  for (const row of runRows as Array<{ user_id: string; score: number; duration: number; won: boolean }>) {
+  for (const row of runRows) {
     const cur = totals.get(row.user_id) ?? { score: 0, time: 0, wins: 0 }
     cur.score += Number(row.score)
     if (row.won) {
@@ -441,29 +519,119 @@ export async function loadLeaderboard(
     totals.set(row.user_id, cur)
   }
   const ids = [...totals.keys()]
-  if (!ids.length) return []
+  if (!ids.length) return empty
   const people = await fetchPeople(ids)
   const byId = new Map(people.map((person) => [person.id, person]))
-  return ids
+  const ranked = ids
     .map((id) => {
       const person = byId.get(id)
       const tot = totals.get(id)
       if (!person || !tot) return null
-      return {
-        id,
-        name: person.name || person.handle,
-        handle: person.handle,
-        photo: person.photo,
-        initials: person.initials,
-        score: tot.score,
-        time: tot.wins ? Math.round((tot.time / tot.wins) * 100) / 100 : 0,
-        streak: person.stats.streak,
-        you: id === youId,
-        region: board,
-      } satisfies LeaderboardRow
+      return rowFromPerson(
+        person,
+        tot.score,
+        tot.wins ? Math.round((tot.time / tot.wins) * 100) / 100 : 0,
+        person.stats.streak,
+        board,
+        youId,
+        0,
+      )
     })
     .filter(Boolean)
     .sort((a, b) => (b as LeaderboardRow).score - (a as LeaderboardRow).score) as LeaderboardRow[]
+
+  ranked.forEach((row, index) => {
+    row.rank = index + 1
+  })
+
+  return packBoard(ranked)
+}
+
+async function loadRunsInWindow(
+  from: string,
+  to: string,
+  board: 'global' | 'friends',
+  youId?: string,
+  friendIds: string[] = [],
+): Promise<LeaderboardBoard> {
+  const empty: LeaderboardBoard = { rows: [], you: null, total: 0 }
+  const db = getSupabase()
+  if (!db) return empty
+
+  let userIds: string[] | null = null
+  if (board === 'friends') {
+    userIds = youId ? [...friendIds, youId] : [...friendIds]
+    if (!userIds.length) return empty
+  }
+
+  let runs = db.from('daily_runs').select('user_id, score, duration, won').gte('day', from).lt('day', to)
+  if (userIds) runs = runs.in('user_id', userIds)
+  const { data: runRows, error: runError } = await runs
+  if (runError || !runRows) return empty
+  return boardFromRuns(runRows as RunAgg[], board, youId)
+}
+
+export async function loadWeekChampions(youId?: string): Promise<WeekChampions> {
+  const week = previousWeekWindow()
+  const board = await loadRunsInWindow(week.start, week.end, 'global', youId)
+  return { rows: board.rows.slice(0, 3), week }
+}
+
+export async function loadLeaderboard(
+  range: 'week' | 'month' | 'all',
+  board: 'global' | 'friends',
+  youId?: string,
+  friendIds: string[] = [],
+): Promise<LeaderboardBoard> {
+  const empty: LeaderboardBoard = { rows: [], you: null, total: 0 }
+  const db = getSupabase()
+  if (!db) return empty
+
+  const bounds = rangeBounds(range)
+  let userIds: string[] | null = null
+  if (board === 'friends') {
+    userIds = youId ? [...friendIds, youId] : [...friendIds]
+    if (!userIds.length) return empty
+  }
+
+  if (range === 'all') {
+    let query = db.from('profiles').select(PROFILE_COLS).gt('points', 0).order('points', { ascending: false })
+    if (userIds) query = query.in('id', userIds)
+    else query = query.limit(BOARD_SIZE)
+    const { data, error } = await query
+    if (error || !data) return empty
+    const top = data as ProfileRow[]
+    const rows = top.map((row, index) => {
+      const person = personFromRow(row)
+      const stats = statsFromRow(row)
+      return rowFromPerson(person, stats.points, stats.averageTime, stats.streak, board, youId, index + 1)
+    })
+
+    let you = rows.find((row) => row.you) ?? null
+    if (youId && !you && !userIds) {
+      const mine = await fetchProfileRow(youId)
+      if (mine) {
+        const person = personFromRow(mine)
+        const stats = statsFromRow(mine)
+        const { count } = await db
+          .from('profiles')
+          .select('id', { count: 'exact', head: true })
+          .gt('points', stats.points)
+        you = rowFromPerson(person, stats.points, stats.averageTime, stats.streak, board, youId, (count ?? 0) + 1)
+      }
+    }
+
+    let total = rows.length
+    if (!userIds) {
+      const { count } = await db.from('profiles').select('id', { count: 'exact', head: true }).gt('points', 0)
+      total = count ?? rows.length
+    }
+
+    return { rows, you, total }
+  }
+
+  if (!bounds.from || !bounds.to) return empty
+  return loadRunsInWindow(bounds.from, bounds.to, board, youId, friendIds)
 }
 
 export { emptyStats }

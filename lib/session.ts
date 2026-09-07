@@ -1,4 +1,5 @@
 import { sanitizeFavoriteIds } from '@/lib/artists'
+import type { AchievementId } from '@/lib/mock'
 import { isOffensiveName } from '@/lib/profanity'
 import type { SavedTrack } from '@/lib/saved-tracks'
 
@@ -10,6 +11,8 @@ export type SessionUser = {
   initials: string
   createdAt: number
   photo?: string
+  banner?: string
+  shownBadges: AchievementId[]
   favorites: string[]
   savedTracks: SavedTrack[]
   friends: string[]
@@ -20,6 +23,7 @@ export type SessionUser = {
     streak: number
     bestStreak: number
     songsGuessed: number
+    songsPlayed: number
     accuracy: number
     averageTime: number
     perfectGuesses: number

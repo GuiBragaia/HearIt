@@ -54,6 +54,12 @@ create table if not exists public.daily_runs (
 alter table public.profiles
   add column if not exists saved_tracks jsonb not null default '[]'::jsonb;
 
+alter table public.profiles
+  add column if not exists banner_url text;
+
+alter table public.profiles
+  add column if not exists shown_badges text[] not null default '{}';
+
 create index if not exists profiles_points_idx on public.profiles (points desc);
 create index if not exists daily_runs_day_score_idx on public.daily_runs (day, score desc);
 create index if not exists friendships_addressee_idx on public.friendships (addressee_id, status);
@@ -383,3 +389,25 @@ end;
 $$;
 
 grant execute on function public.submit_feedback(text, text) to authenticated;
+
+create or replace function public.delete_own_account()
+returns void
+language plpgsql
+security definer
+set search_path = public, auth
+as $$
+declare
+  uid uuid := auth.uid();
+begin
+  if uid is null then
+    raise exception 'auth';
+  end if;
+  delete from storage.objects
+  where bucket_id = 'avatars'
+    and split_part(name, '/', 1) = uid::text;
+  delete from auth.users where id = uid;
+end;
+$$;
+
+revoke all on function public.delete_own_account() from public, anon;
+grant execute on function public.delete_own_account() to authenticated;

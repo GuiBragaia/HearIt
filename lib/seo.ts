@@ -74,7 +74,7 @@ const pages: Record<
     path: '/leaderboard',
     title: 'Scores',
     description:
-      'The Hear It board. See who named today’s song with the least audio — this week, this month, or all time.',
+      'The Hear It board. Weekly scores reset Monday at midnight — last week’s top 3 stay crowned.',
   },
   join: {
     path: '/join',

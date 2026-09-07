@@ -1,11 +1,11 @@
+import { saoPauloDay } from '@/lib/calendar'
 import { catalog, type Song } from '@/lib/mock'
 
 const EPOCH = Date.UTC(2026, 0, 1)
-const ZONE = 'America/Sao_Paulo'
 
 /**
- * Daily queue for this week (São Paulo calendar).
- * Swap the ids next week.
+ * Daily queue (São Paulo calendar).
+ * After the last date it would freeze on that song — keep this filled ahead.
  */
 const DAILY_WEEK: Record<string, string> = {
   '2026-09-03': 'lithium',
@@ -13,17 +13,15 @@ const DAILY_WEEK: Record<string, string> = {
   '2026-09-05': 'blinding-lights',
   '2026-09-06': 'feel-good-inc',
   '2026-09-07': 'midnight-city',
-  '2026-09-08': 'toxicity',
-  '2026-09-09': 'electric-feel',
-}
-
-function saoPauloDay(now = new Date()) {
-  return new Intl.DateTimeFormat('en-CA', {
-    timeZone: ZONE,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(now)
+  '2026-09-08': 'gummy-bear',
+  '2026-09-09': 'toxicity',
+  '2026-09-10': 'killer-queen',
+  '2026-09-11': 'less-i-know',
+  '2026-09-12': 'hey-jude',
+  '2026-09-13': 'the-chain',
+  '2026-09-14': 'back-in-black',
+  '2026-09-15': 'alright',
+  '2026-09-16': 'bye-bye-bye',
 }
 
 function songByCatalogId(id?: string) {

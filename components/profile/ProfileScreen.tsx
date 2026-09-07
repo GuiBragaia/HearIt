@@ -6,33 +6,28 @@ import { FavoriteArtists, ProfileCustomize, ProfileName, ProfilePhoto } from '@/
 import { SavedTracks } from '@/components/profile/SavedTracks'
 import { FriendsList } from '@/components/profile/Friends'
 import { ProfileStats } from '@/components/profile/ProfileStats'
-import { AchievementGrid } from '@/components/profile/AchievementGrid'
+import { AchievementGrid, ShownBadges } from '@/components/profile/AchievementGrid'
+import { ProfileBanner } from '@/components/profile/ProfileBanner'
+import { DailyPlays } from '@/components/profile/DailyPlays'
+import { DeleteAccountConfirm } from '@/components/profile/DeleteAccountConfirm'
 import { LogoutConfirm } from '@/components/auth/LogoutConfirm'
 import { useSession } from '@/components/auth/session-context'
-import { loadRecentRuns } from '@/lib/db'
-import { songById } from '@/lib/songs'
-import { dailyKey } from '@/lib/game'
+import { loadRecentRuns, type RecentRun } from '@/lib/db'
+import { unlockedAchievements } from '@/lib/achievements'
 import { HearLoading } from '@/components/states/HearLoading'
 import { ViewportWaveform } from '@/components/audio/ViewportWaveform'
 import { LogoMark } from '@/components/layout/Logo'
 import { useI18n } from '@/lib/i18n'
-import { cn } from '@/lib/utils'
-
-function playDayLabel(iso: string, today: string, locale: string) {
-  if (iso === today) return null
-  return new Date(`${iso}T12:00:00`).toLocaleDateString(locale === 'pt' ? 'pt-BR' : 'en-US', {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-  })
-}
 
 export function ProfileScreen() {
-  const { t, locale } = useI18n()
-  const { user, ready, logout } = useSession()
+  const { t } = useI18n()
+  const { user, ready, logout, updateProfile, deleteAccount } = useSession()
   const [leaving, setLeaving] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [deleteBusy, setDeleteBusy] = useState(false)
+  const [deleteFail, setDeleteFail] = useState(false)
   const [editing, setEditing] = useState(false)
-  const [plays, setPlays] = useState<Array<{ day: string; songId: string; won: boolean }>>([])
+  const [plays, setPlays] = useState<RecentRun[]>([])
 
   useEffect(() => {
     if (!user) {
@@ -40,7 +35,7 @@ export function ProfileScreen() {
       return
     }
     let live = true
-    void loadRecentRuns(user.id).then((rows) => {
+    void loadRecentRuns(user.id, 5).then((rows) => {
       if (live) setPlays(rows)
     })
     return () => {
@@ -51,7 +46,7 @@ export function ProfileScreen() {
   if (!ready) return <HearLoading />
 
   const since = user ? new Date(user.createdAt).getFullYear() : 0
-  const today = dailyKey()
+  const unlocked = user ? unlockedAchievements(user.stats) : []
 
   return (
     <>
@@ -108,31 +103,43 @@ export function ProfileScreen() {
           <ViewportWaveform className="play-hub-wave" />
         </section>
       ) : (
-        <section className="profile-page">
-          <div className="profile-head enter enter-1">
-            <ProfilePhoto
-              photo={user.photo}
-              initials={user.initials}
-              viewer={{ name: user.name, handle: user.handle }}
-            />
-            <div className="min-w-0 flex-1">
-              <ProfileName name={user.name} handle={user.handle} since={since} />
-              <button type="button" className="profile-edit" onClick={() => setEditing(true)}>
-                <i aria-hidden>
-                  <span />
-                  <span />
-                  <span />
-                </i>
-                {t.profile.edit}
-              </button>
+        <section className="profile-page has-banner">
+          <div className="profile-hero enter enter-1">
+            <div className="profile-hero-art">
+              <ProfileBanner
+                bannerUrl={user.banner}
+                favoriteId={user.favorites[0]}
+                editable
+                onChange={(next) => {
+                  void updateProfile({ banner: next })
+                }}
+                onClear={() => {
+                  void updateProfile({ banner: '' })
+                }}
+              />
             </div>
-            <button
-              type="button"
-              onClick={() => setLeaving(true)}
-              className="auth-logout"
-            >
-              {t.auth.logout}
-            </button>
+            <div className="profile-head">
+              <div className="profile-hero-face">
+                <ProfilePhoto
+                  photo={user.photo}
+                  initials={user.initials}
+                  size="lg"
+                  viewer={{ name: user.name, handle: user.handle }}
+                />
+              </div>
+              <div className="profile-head-copy">
+                <ProfileName name={user.name} handle={user.handle} since={since} />
+                <ShownBadges ids={user.shownBadges} unlocked={unlocked} />
+                <button type="button" className="profile-edit" onClick={() => setEditing(true)}>
+                  <i aria-hidden>
+                    <span />
+                    <span />
+                    <span />
+                  </i>
+                  {t.profile.edit}
+                </button>
+              </div>
+            </div>
           </div>
 
           <div className="profile-panel enter enter-3">
@@ -153,39 +160,20 @@ export function ProfileScreen() {
           </div>
 
           <div className="profile-panel enter enter-6">
-            <AchievementGrid />
+            <AchievementGrid shownBadges={user.shownBadges} editable />
           </div>
 
           <div className="profile-panel enter enter-7">
-            <div className="profile-panel-head">
-              <h2>{t.profile.history}</h2>
-            </div>
-            {plays.length === 0 ? (
-              <p className="profile-panel-empty">{t.states.emptyPlays}</p>
-            ) : (
-              <ol className="profile-plays">
-                {plays.map((play) => {
-                  const song = songById(play.songId)
-                  return (
-                    <li key={`${play.day}-${play.songId}`} className="profile-play">
-                      <span className={cn('profile-play-dot', play.won ? 'is-hit' : 'is-miss')} />
-                      <div>
-                        <p className="profile-play-day">
-                          {play.day === today ? t.profile.today : playDayLabel(play.day, today, locale)}
-                        </p>
-                        <p className="profile-play-title">{song?.title ?? play.songId}</p>
-                        <p className="profile-play-meta">
-                          <span>{song?.artist ?? ''}</span>
-                          <b className={play.won ? 'is-hit' : 'is-miss'}>
-                            {play.won ? t.profile.hit : t.profile.skip}
-                          </b>
-                        </p>
-                      </div>
-                    </li>
-                  )
-                })}
-              </ol>
-            )}
+            <DailyPlays plays={plays} />
+          </div>
+
+          <div className="profile-foot">
+            <button type="button" onClick={() => setLeaving(true)} className="auth-logout">
+              {t.auth.logout}
+            </button>
+            <button type="button" className="profile-delete" onClick={() => setDeleting(true)}>
+              {t.auth.deleteAccount}
+            </button>
           </div>
         </section>
       )}
@@ -199,6 +187,29 @@ export function ProfileScreen() {
           setLeaving(false)
         }}
       />
+      {user ? (
+        <DeleteAccountConfirm
+          open={deleting}
+          user={user}
+          busy={deleteBusy}
+          failed={deleteFail}
+          onCancel={() => {
+            setDeleting(false)
+            setDeleteFail(false)
+          }}
+          onConfirm={() => {
+            setDeleteBusy(true)
+            void deleteAccount().then((ok) => {
+              setDeleteBusy(false)
+              if (ok) {
+                setDeleting(false)
+                return
+              }
+              setDeleteFail(true)
+            })
+          }}
+        />
+      ) : null}
     </>
   )
 }
