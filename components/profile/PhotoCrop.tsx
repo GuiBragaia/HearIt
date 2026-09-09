@@ -7,12 +7,19 @@ import { OverlayPortal } from '@/components/overlay-portal'
 import { useI18n } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
 
+const OUTPUT = {
+  photo: { width: 512, height: 512 },
+  banner: { width: 1280, height: 400 },
+} as const
+
 export function PhotoCrop({
   draft,
+  kind = 'photo',
   onCancel,
   onConfirm,
 }: {
   draft: PhotoDraft | null
+  kind?: 'photo' | 'banner'
   onCancel: () => void
   onConfirm: (dataUrl: string) => void
 }) {
@@ -24,8 +31,9 @@ export function PhotoCrop({
   const drag = useRef<{ x: number; y: number; px: number; py: number } | null>(null)
   const pinch = useRef<{ dist: number; scale: number } | null>(null)
   const [view, setView] = useState({ x: 0, y: 0, scale: 1 })
-  const [crop, setCrop] = useState(320)
+  const [frame, setFrame] = useState({ width: 320, height: 320 })
   const [ready, setReady] = useState(false)
+  const wide = kind === 'banner'
 
   viewRef.current = view
 
@@ -35,14 +43,16 @@ export function PhotoCrop({
       return
     }
     const measure = () => {
-      const size = stageRef.current?.clientWidth || 320
-      setCrop(size)
-      setView(centeredCrop(draft.width, draft.height, size))
+      const node = stageRef.current
+      const width = node?.clientWidth || 320
+      const height = node?.clientHeight || (wide ? Math.round(width * (5 / 16)) : width)
+      setFrame({ width, height })
+      setView(centeredCrop(draft.width, draft.height, width, height))
       setReady(true)
     }
-    const frame = requestAnimationFrame(measure)
-    return () => cancelAnimationFrame(frame)
-  }, [draft])
+    const frameId = requestAnimationFrame(measure)
+    return () => cancelAnimationFrame(frameId)
+  }, [draft, wide])
 
   useEffect(() => {
     if (!draft) return
@@ -64,7 +74,7 @@ export function PhotoCrop({
     const onWheel = (event: WheelEvent) => {
       event.preventDefault()
       const current = viewRef.current
-      const min = coverScale(draft.width, draft.height, crop)
+      const min = coverScale(draft.width, draft.height, frame.width, frame.height)
       const nextScale = Math.min(min * 4, Math.max(min, current.scale * (event.deltaY > 0 ? 0.92 : 1.08)))
       const box = node.getBoundingClientRect()
       const px = event.clientX - box.left
@@ -72,19 +82,22 @@ export function PhotoCrop({
       const ratio = nextScale / current.scale
       const x = px - (px - current.x) * ratio
       const y = py - (py - current.y) * ratio
-      setView({ scale: nextScale, ...clampPan(x, y, draft.width, draft.height, nextScale, crop) })
+      setView({
+        scale: nextScale,
+        ...clampPan(x, y, draft.width, draft.height, nextScale, frame.width, frame.height),
+      })
     }
     node.addEventListener('wheel', onWheel, { passive: false })
     return () => node.removeEventListener('wheel', onWheel)
-  }, [draft, crop])
+  }, [draft, frame.height, frame.width])
 
-  const minScale = coverScale(draft?.width ?? 1, draft?.height ?? 1, crop)
+  const minScale = coverScale(draft?.width ?? 1, draft?.height ?? 1, frame.width, frame.height)
   const maxScale = minScale * 4
 
   const apply = (next: { x: number; y: number; scale: number }) => {
     if (!draft) return
     const scale = Math.min(maxScale, Math.max(minScale, next.scale))
-    setView({ scale, ...clampPan(next.x, next.y, draft.width, draft.height, scale, crop) })
+    setView({ scale, ...clampPan(next.x, next.y, draft.width, draft.height, scale, frame.width, frame.height) })
   }
 
   const zoomAt = (clientX: number, clientY: number, nextScale: number) => {
@@ -135,7 +148,9 @@ export function PhotoCrop({
     const image = imageRef.current
     if (!image) return
     try {
-      onConfirm(exportCrop(image, { ...view, size: crop }))
+      onConfirm(
+        exportCrop(image, { ...view, width: frame.width, height: frame.height }, OUTPUT[kind]),
+      )
     } catch {
       /* keep draft */
     }
@@ -157,14 +172,14 @@ export function PhotoCrop({
           onClick={onCancel}
         >
           <motion.div
-            className="crop-body"
+            className={cn('crop-body', wide && 'is-banner')}
             initial={reduce ? false : { opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             exit={reduce ? undefined : { opacity: 0, y: 8 }}
             transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
             onClick={(event) => event.stopPropagation()}
           >
-            <p className="crop-kicker">{t.profile.photoChange}</p>
+            <p className="crop-kicker">{wide ? t.profile.bannerChange : t.profile.photoChange}</p>
             <h2 id="crop-title" className="crop-title">
               {t.profile.photoCrop}
             </h2>
@@ -172,7 +187,7 @@ export function PhotoCrop({
 
             <div
               ref={stageRef}
-              className={cn('crop-stage', ready && 'is-ready')}
+              className={cn('crop-stage', wide && 'is-banner', ready && 'is-ready')}
               onPointerDown={onPointerDown}
               onPointerMove={onPointerMove}
               onPointerUp={() => {
@@ -199,7 +214,7 @@ export function PhotoCrop({
                 }}
               />
             </div>
-            <p className="crop-hint">{t.profile.photoCropHint}</p>
+            <p className="crop-hint">{wide ? t.profile.bannerCropHint : t.profile.photoCropHint}</p>
 
             <button type="button" className="crop-use" onClick={confirm}>
               {t.profile.photoCropUse}

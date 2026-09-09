@@ -27,11 +27,20 @@ export function ShownBadges({
   if (!shown.length) return null
   return (
     <ul className="badge-wear">
-      {shown.map((id) => (
-        <li key={id} className="badge-wear-item" title={t.achievements[id].name}>
-          <BadgeMark id={id} />
-        </li>
-      ))}
+      {shown.map((id) => {
+        const copy = t.achievements[id]
+        return (
+          <li key={id} className="badge-wear-item">
+            <button type="button" className="badge-wear-btn" aria-label={copy.name}>
+              <BadgeMark id={id} />
+              <span className="badge-wear-tip" role="tooltip">
+                <strong>{copy.name}</strong>
+                <small>{copy.hint}</small>
+              </span>
+            </button>
+          </li>
+        )
+      })}
     </ul>
   )
 }

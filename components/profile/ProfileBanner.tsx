@@ -1,9 +1,10 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { artistById } from '@/lib/artists'
 import { resolveArtistArt } from '@/lib/artist-art'
-import { exportBanner, readPhotoFile } from '@/lib/photo'
+import { readPhotoFile, type PhotoDraft } from '@/lib/photo'
+import { PhotoCrop } from './PhotoCrop'
 import { useI18n } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
 
@@ -23,8 +24,11 @@ export function ProfileBanner({
   const { t } = useI18n()
   const inputRef = useRef<HTMLInputElement>(null)
   const [art, setArt] = useState<string | null>(null)
+  const [draft, setDraft] = useState<PhotoDraft | null>(null)
+  const draftRef = useRef<PhotoDraft | null>(null)
   const custom = Boolean(bannerUrl)
   const src = bannerUrl || art || undefined
+  draftRef.current = draft
 
   useEffect(() => {
     if (bannerUrl) {
@@ -37,7 +41,7 @@ export function ProfileBanner({
       return
     }
     let live = true
-    void resolveArtistArt(name).then((url) => {
+    void resolveArtistArt(name, 'banner').then((url) => {
       if (live) setArt(url)
     })
     return () => {
@@ -45,21 +49,15 @@ export function ProfileBanner({
     }
   }, [bannerUrl, favoriteId])
 
+  const closeDraft = useCallback(() => {
+    if (draftRef.current) URL.revokeObjectURL(draftRef.current.url)
+    setDraft(null)
+  }, [])
+
   const onFile = async (file?: File) => {
     if (!file) return
     try {
-      const draft = await readPhotoFile(file)
-      const image = new Image()
-      image.onload = () => {
-        URL.revokeObjectURL(draft.url)
-        try {
-          onChange?.(exportBanner(image))
-        } catch {
-          /* keep current */
-        }
-      }
-      image.onerror = () => URL.revokeObjectURL(draft.url)
-      image.src = draft.url
+      setDraft(await readPhotoFile(file))
     } catch {
       /* keep current */
     }
@@ -67,7 +65,7 @@ export function ProfileBanner({
 
   return (
     <div className={cn('profile-banner', !src && 'is-empty')}>
-      {src ? <img src={src} alt="" /> : <span className="profile-banner-fall" aria-hidden />}
+      {src ? <img src={src} alt="" decoding="async" /> : <span className="profile-banner-fall" aria-hidden />}
       {editable ? (
         <div className="profile-banner-actions">
           <button type="button" onClick={() => inputRef.current?.click()}>
@@ -90,6 +88,17 @@ export function ProfileBanner({
             }}
           />
         </div>
+      ) : null}
+      {editable ? (
+        <PhotoCrop
+          kind="banner"
+          draft={draft}
+          onCancel={closeDraft}
+          onConfirm={(next) => {
+            onChange?.(next)
+            closeDraft()
+          }}
+        />
       ) : null}
     </div>
   )

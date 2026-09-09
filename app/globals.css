@@ -2575,27 +2575,80 @@ button:disabled {
 
 .badge-wear {
   display: flex;
-  gap: 8px;
+  gap: 10px;
   margin: 8px 0 10px;
   padding: 0;
   list-style: none;
 }
 
 .profile-head-copy .badge-wear {
-  margin: 6px 0 8px;
+  margin: 8px 0 10px;
 }
 
 .badge-wear-item {
-  width: 28px;
-  height: 28px;
+  position: relative;
+  width: 36px;
+  height: 36px;
   color: var(--primary);
-  filter: drop-shadow(0 0 8px rgba(200, 243, 90, 0.35));
+}
+
+.badge-wear-btn {
+  display: block;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
 }
 
 .badge-wear-item .badge-mark {
   display: block;
   width: 100%;
   height: 100%;
+  filter: drop-shadow(0 0 8px rgba(200, 243, 90, 0.35));
+}
+
+.badge-wear-tip {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 10px);
+  z-index: 8;
+  width: max-content;
+  max-width: 20ch;
+  padding: 7px 10px 8px;
+  border: 1px solid rgba(200, 243, 90, 0.22);
+  border-radius: 8px;
+  background: rgba(10, 13, 9, 0.94);
+  color: #e7ebd9;
+  font-size: 12px;
+  line-height: 1.35;
+  text-align: center;
+  white-space: normal;
+  opacity: 0;
+  transform: translateX(-50%) translateY(6px);
+  pointer-events: none;
+  backdrop-filter: blur(12px);
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.badge-wear-tip strong {
+  display: block;
+  font-weight: 600;
+}
+
+.badge-wear-tip small {
+  display: block;
+  margin-top: 3px;
+  color: #9aa392;
+  font-size: 11px;
+  font-weight: 450;
+}
+
+.badge-wear-item:hover .badge-wear-tip,
+.badge-wear-item:focus-within .badge-wear-tip {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
 }
 
 .profile-pager {
@@ -3409,6 +3462,10 @@ span.profile-edit {
   line-height: 1.45;
 }
 
+.crop-body.is-banner {
+  width: min(100%, 560px);
+}
+
 .crop-stage {
   position: relative;
   width: min(78vw, 340px);
@@ -3420,6 +3477,11 @@ span.profile-edit {
   cursor: grab;
   touch-action: none;
   opacity: 0;
+}
+
+.crop-stage.is-banner {
+  width: min(92vw, 520px);
+  aspect-ratio: 16 / 5;
 }
 
 .crop-stage.is-ready {

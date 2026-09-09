@@ -28,51 +28,49 @@ export function readPhotoFile(file: File): Promise<PhotoDraft> {
   })
 }
 
-export function coverScale(width: number, height: number, crop: number) {
-  return crop / Math.min(width, height)
+export function coverScale(width: number, height: number, frameW: number, frameH = frameW) {
+  return Math.max(frameW / width, frameH / height)
 }
 
-export function clampPan(x: number, y: number, width: number, height: number, scale: number, crop: number) {
+export function clampPan(
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  scale: number,
+  frameW: number,
+  frameH = frameW,
+) {
   const dw = width * scale
   const dh = height * scale
   return {
-    x: Math.min(0, Math.max(crop - dw, x)),
-    y: Math.min(0, Math.max(crop - dh, y)),
+    x: Math.min(0, Math.max(frameW - dw, x)),
+    y: Math.min(0, Math.max(frameH - dh, y)),
   }
 }
 
-export function centeredCrop(width: number, height: number, crop: number) {
-  const scale = coverScale(width, height, crop)
+export function centeredCrop(width: number, height: number, frameW: number, frameH = frameW) {
+  const scale = coverScale(width, height, frameW, frameH)
   return {
     scale,
-    ...clampPan((crop - width * scale) / 2, (crop - height * scale) / 2, width, height, scale, crop),
+    ...clampPan((frameW - width * scale) / 2, (frameH - height * scale) / 2, width, height, scale, frameW, frameH),
   }
 }
 
 export function exportCrop(
   image: HTMLImageElement,
-  crop: { x: number; y: number; scale: number; size: number },
-  output = 512,
+  crop: { x: number; y: number; scale: number; width: number; height: number },
+  output?: { width: number; height: number },
 ) {
-  const source = crop.size / crop.scale
+  const outW = Math.round(output?.width ?? crop.width)
+  const outH = Math.round(output?.height ?? crop.height)
+  const sourceW = crop.width / crop.scale
+  const sourceH = crop.height / crop.scale
   const canvas = document.createElement('canvas')
-  canvas.width = output
-  canvas.height = output
+  canvas.width = outW
+  canvas.height = outH
   const ctx = canvas.getContext('2d')
   if (!ctx) throw new Error('canvas')
-  ctx.drawImage(image, -crop.x / crop.scale, -crop.y / crop.scale, source, source, 0, 0, output, output)
-  return canvas.toDataURL('image/jpeg', 0.86)
-}
-
-export function exportBanner(image: HTMLImageElement, width = 1280, height = 400) {
-  const canvas = document.createElement('canvas')
-  canvas.width = width
-  canvas.height = height
-  const ctx = canvas.getContext('2d')
-  if (!ctx) throw new Error('canvas')
-  const scale = Math.max(width / image.width, height / image.height)
-  const dw = image.width * scale
-  const dh = image.height * scale
-  ctx.drawImage(image, (width - dw) / 2, (height - dh) / 2, dw, dh)
+  ctx.drawImage(image, -crop.x / crop.scale, -crop.y / crop.scale, sourceW, sourceH, 0, 0, outW, outH)
   return canvas.toDataURL('image/jpeg', 0.86)
 }
