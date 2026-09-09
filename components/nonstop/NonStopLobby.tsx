@@ -6,7 +6,7 @@ import { useSession } from '@/components/auth/session-context'
 import type { HearTrack } from '@/lib/deezer'
 import { useI18n } from '@/lib/i18n'
 import { prepareNonstopQueue } from '@/lib/nonstop-queue'
-import { readHeardIds, rememberHeardIds } from '@/lib/nonstop-heard'
+import { heardOwner, readHeard } from '@/lib/nonstop-heard'
 import { readNonstopStats } from '@/lib/nonstop-stats'
 import { songForDay } from '@/lib/songs'
 import { formatNumber } from '@/lib/utils'
@@ -27,10 +27,12 @@ export function NonStopLobby({ onPlay }: { onPlay: (tracks: HearTrack[]) => void
     setLoading(true)
     setFailed(false)
     try {
+      const heard = readHeard(heardOwner(user?.id))
       const tracks = await prepareNonstopQueue({
         favs: favKey ? favKey.split(',') : [],
         exclude: dailySong.title,
-        seen: user?.id ? readHeardIds(user.id) : [],
+        seenIds: heard.ids,
+        seenKeys: heard.keys,
       })
       if (!tracks[0]) {
         setQueue(null)
@@ -38,7 +40,6 @@ export function NonStopLobby({ onPlay }: { onPlay: (tracks: HearTrack[]) => void
         return
       }
       setQueue(tracks)
-      if (user?.id) rememberHeardIds(user.id, tracks.map((track) => track.id))
     } catch {
       setQueue(null)
       setFailed(true)

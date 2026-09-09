@@ -386,7 +386,7 @@ export function GameBoard() {
         )}
 
         <Waveform
-          active={player.playing || hit}
+          active={player.playing}
           progress={player.progress}
           intensity={perfectHit ? 1.65 : clutchHit ? 1.4 : hit ? 1.25 : missed ? 0.7 : 1}
         />

@@ -26,7 +26,8 @@ import {
 import { useI18n } from '@/lib/i18n'
 import { loadNonstopQueue } from '@/lib/nonstop-queue'
 import { recordNonstopNamed } from '@/lib/nonstop-stats'
-import { readHeardIds, rememberHeardIds } from '@/lib/nonstop-heard'
+import { heardOwner, nonstopTrackKey, readHeard, rememberHeard, type HeardCatalog } from '@/lib/nonstop-heard'
+import { useSessionLeaveGuard } from '@/components/layout/leave-guard'
 import { songForDay } from '@/lib/songs'
 import { getSettings } from '@/lib/settings'
 import { cn } from '@/lib/utils'
@@ -39,12 +40,17 @@ const HOLD_FAILED = 1600
 const LAST_LEVEL = CLIP_LENGTHS.length - 1
 const LOW_WATER = 3
 
-function mergeTracks(current: HearTrack[], incoming: HearTrack[], seen: Set<string>) {
-  const have = new Set(current.map((track) => track.id))
+function mergeTracks(current: HearTrack[], incoming: HearTrack[], seen: HeardCatalog) {
+  const haveIds = new Set(current.map((track) => track.id))
+  const haveKeys = new Set(current.map(nonstopTrackKey))
+  const seenIds = new Set(seen.ids)
+  const seenKeys = new Set(seen.keys)
   const extra: HearTrack[] = []
   for (const track of incoming) {
-    if (have.has(track.id) || seen.has(track.id)) continue
-    have.add(track.id)
+    const key = nonstopTrackKey(track)
+    if (haveIds.has(track.id) || haveKeys.has(key) || seenIds.has(track.id) || seenKeys.has(key)) continue
+    haveIds.add(track.id)
+    haveKeys.add(key)
     extra.push(track)
   }
   const head = current[0]
@@ -55,6 +61,7 @@ function mergeTracks(current: HearTrack[], incoming: HearTrack[], seen: Set<stri
 export function NonStopBoard({ initialQueue }: { initialQueue: HearTrack[] }) {
   const { t } = useI18n()
   const { user } = useSession()
+  useSessionLeaveGuard(true)
   const reduce = useReducedMotion()
   const { setPlaying, setFeel } = usePlaying()
   const dailySong = songForDay()
@@ -71,8 +78,8 @@ export function NonStopBoard({ initialQueue }: { initialQueue: HearTrack[] }) {
   const timers = useRef<number[]>([])
   const filling = useRef(false)
   const queueRef = useRef<HearTrack[]>([])
-  const heardUser = user?.id
-  const seenRef = useRef<string[]>(heardUser ? readHeardIds(heardUser) : [])
+  const owner = heardOwner(user?.id)
+  const seenRef = useRef<HeardCatalog>(readHeard(owner))
 
   const track = queue[0] ?? null
   const duration = CLIP_LENGTHS[Math.min(level, CLIP_LENGTHS.length - 1)]
@@ -109,20 +116,34 @@ export function NonStopBoard({ initialQueue }: { initialQueue: HearTrack[] }) {
       if (filling.current) return current
       filling.current = true
       try {
+        const heard = readHeard(owner)
+        const inFlightIds = current.map((item) => item.id)
+        const inFlightKeys = current.map(nonstopTrackKey)
         const incoming = await loadNonstopQueue({
           favs: favKey ? favKey.split(',') : [],
           exclude: dailySong.title,
-          seen: [...(heardUser ? readHeardIds(heardUser) : []), ...seenRef.current, ...current.map((item) => item.id)],
+          seenIds: [...heard.ids, ...seenRef.current.ids, ...inFlightIds],
+          seenKeys: [...heard.keys, ...seenRef.current.keys, ...inFlightKeys],
         })
-        if (heardUser) rememberHeardIds(heardUser, incoming.map((item) => item.id))
-        seenRef.current = [...seenRef.current, ...incoming.map((item) => item.id)]
-        return mergeTracks(current, incoming, new Set(seenRef.current))
+        return mergeTracks(current, incoming, {
+          ids: [...heard.ids, ...seenRef.current.ids, ...inFlightIds],
+          keys: [...heard.keys, ...seenRef.current.keys, ...inFlightKeys],
+        })
       } finally {
         filling.current = false
       }
     },
-    [dailySong.title, favKey, heardUser],
+    [dailySong.title, favKey, owner],
   )
+
+  useEffect(() => {
+    if (!track) return
+    seenRef.current = {
+      ids: [...seenRef.current.ids, track.id],
+      keys: [...seenRef.current.keys, nonstopTrackKey(track)],
+    }
+    rememberHeard(owner, [track])
+  }, [owner, track?.id])
 
   useEffect(() => {
     if (initialQueue[0]) return
@@ -245,8 +266,11 @@ export function NonStopBoard({ initialQueue }: { initialQueue: HearTrack[] }) {
     clearTimers()
     player.stop()
     setFeel(null)
-    seenRef.current = [...seenRef.current, track.id]
-    if (heardUser) rememberHeardIds(heardUser, [track.id])
+    seenRef.current = {
+      ids: [...seenRef.current.ids, track.id],
+      keys: [...seenRef.current.keys, nonstopTrackKey(track)],
+    }
+    rememberHeard(owner, [track])
     setGuess('')
     setLevel(0)
     setHitThis(false)
@@ -395,7 +419,7 @@ export function NonStopBoard({ initialQueue }: { initialQueue: HearTrack[] }) {
         )}
 
         <Waveform
-          active={player.playing || hit}
+          active={player.playing}
           progress={player.progress}
           intensity={perfectHit ? 1.65 : clutchHit ? 1.4 : hit ? 1.25 : missed ? 0.7 : 1}
         />

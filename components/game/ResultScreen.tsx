@@ -64,7 +64,7 @@ export function ResultScreen({
       <div className="result-mark" aria-hidden>
         <LogoMark size={220} />
       </div>
-      <ViewportWaveform variant="horizon" hot={won && playing} />
+      <ViewportWaveform variant="bars" hot={playing} />
       {perfect ? (
         <span className="feel-perfect" aria-hidden>
           {Array.from({ length: 12 }, (_, index) => (

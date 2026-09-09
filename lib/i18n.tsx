@@ -494,6 +494,10 @@ const en = {
     ],
     helloCta: 'Let’s hear it',
     helloLater: 'Later — I’ll do Daily',
+    leaveAsk: 'Leave this run?',
+    leaveLead: 'You’ll lose this Non-Stop session. Songs you already named stay in your totals, but the streak here resets.',
+    leaveStay: 'Keep playing',
+    leaveGo: 'Leave',
   },
 }
 
@@ -985,6 +989,10 @@ const pt: Dictionary = {
     ],
     helloCta: 'Quero ouvir',
     helloLater: 'Depois. Vou no Daily',
+    leaveAsk: 'Sair da sessão?',
+    leaveLead: 'Você perde o progresso desta sessão do Non-Stop. O que já acertou continua no total, mas a sequência daqui zera.',
+    leaveStay: 'Continuar',
+    leaveGo: 'Sair',
   },
 }
 

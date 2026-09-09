@@ -41,7 +41,7 @@ export function NonStopBeat({
       <div className="result-mark" aria-hidden>
         <LogoMark size={220} />
       </div>
-      <ViewportWaveform variant="horizon" hot={won && playing} />
+      <ViewportWaveform variant="bars" hot={playing} />
 
       <div className="result-body">
         <p className={cn('result-kicker', won ? 'is-hit' : 'is-miss')}>

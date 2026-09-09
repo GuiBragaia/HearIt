@@ -69,7 +69,7 @@ export function DailyDone({
       <div className="result-mark" aria-hidden>
         <LogoMark size={220} />
       </div>
-      <ViewportWaveform variant="horizon" hot={playing} />
+      <ViewportWaveform variant="bars" hot={playing} />
 
       <div className="daily-done-body">
         <motion.p

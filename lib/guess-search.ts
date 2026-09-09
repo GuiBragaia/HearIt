@@ -1,4 +1,11 @@
-import { artistsMatch, guessFitsQuery, isJunkArtist, isStudioTrack, suggestionFitsQuery } from '@/lib/catalog-quality'
+import {
+  artistsMatch,
+  fuzzyFits,
+  guessFitsQuery,
+  isJunkArtist,
+  isStudioTrack,
+  suggestionFitsQuery,
+} from '@/lib/catalog-quality'
 import { deezerArtistHits, deezerFindArtist, deezerJson, type HearTrack } from '@/lib/deezer'
 import { normalizeGuess, songCoreTitle } from '@/lib/game'
 
@@ -121,6 +128,10 @@ function rankSongs(hits: GuessHit[], query: string) {
       if (needle.includes(core) && needle.includes(artist)) score += 14
       if (artist.includes(needle)) score += 4
       if (title.includes(needle) || core.includes(needle)) score += 3
+      if (fuzzyFits(needle, core) || fuzzyFits(needle, title)) score += 6
+      if (fuzzyFits(needle, artist)) score += 4
+      if (fuzzyFits(needle, `${core} ${artist}`)) score += 3
+      if (/\(\s*live\b/i.test(hit.title) || /\[\s*live\b/i.test(hit.title)) score -= 12
       if (hit.artwork) score += 1
       return { hit, score }
     })
@@ -137,12 +148,19 @@ export async function searchGuesses(query: string): Promise<GuessHit[]> {
   if (term.length < 2) return []
 
   const needle = normalizeGuess(term)
-  const [trackData, named] = await Promise.all([
+  const parts = term.split(/\s+/).filter((part) => part.length >= 4)
+  const longest = [...parts].sort((a, b) => b.length - a.length)[0]
+  const extra = longest && normalizeGuess(longest) !== needle ? longest : ''
+
+  const [trackData, extraData, named] = await Promise.all([
     deezerJson<{ data?: DeezerSong[] }>(`/search/track?q=${encodeURIComponent(term)}&limit=25`),
+    extra
+      ? deezerJson<{ data?: DeezerSong[] }>(`/search/track?q=${encodeURIComponent(extra)}&limit=20`)
+      : Promise.resolve(null),
     needle.length >= 3 ? deezerFindArtist(term, 200_000) : Promise.resolve(null),
   ])
 
-  const searched = fromDeezer(trackData?.data ?? [])
+  const searched = fromDeezer([...(trackData?.data ?? []), ...(extraData?.data ?? [])])
   const fitted = searched.filter((hit) => guessFitsQuery(term, hit))
   const combo = fitted.filter((hit) => {
     const core = normalizeGuess(songCoreTitle(hit.title))
@@ -151,8 +169,11 @@ export async function searchGuesses(query: string): Promise<GuessHit[]> {
   })
   if (combo.length) return asSuggestions(keepCanonical(combo), term).slice(0, 8)
 
-  const byArtist = fitted.filter((hit) => artistLooksLikeQuery(term, hit.artist))
-  const titleExact = fitted.filter((hit) => normalizeGuess(songCoreTitle(hit.title)) === needle)
+  const byArtist = fitted.filter((hit) => artistLooksLikeQuery(term, hit.artist) || fuzzyFits(term, hit.artist))
+  const titleExact = fitted.filter((hit) => {
+    const core = normalizeGuess(songCoreTitle(hit.title))
+    return core === needle || fuzzyFits(term, core)
+  })
   const titleFromOthers = titleExact.filter((hit) => !artistLooksLikeQuery(term, hit.artist))
   const otherTitleRank = Math.max(0, ...titleFromOthers.map((hit) => hit.rank))
   const artistRank = Math.max(0, ...byArtist.map((hit) => hit.rank))
@@ -166,7 +187,7 @@ export async function searchGuesses(query: string): Promise<GuessHit[]> {
       : []
 
   const byTitle = preferExactTitle(
-    keepCanonical(fitted.filter((hit) => normalizeGuess(hit.title).includes(needle))),
+    keepCanonical(fitted.filter((hit) => fuzzyFits(term, hit.title) || fuzzyFits(term, songCoreTitle(hit.title)))),
     needle,
   )
 

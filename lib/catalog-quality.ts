@@ -38,41 +38,104 @@ export function isStudioTrack(input: { title?: string; artist?: string; album?: 
   return !isJunkRecording(input)
 }
 
-function wordsStartWith(value: string, needle: string) {
-  return value.split(' ').some((word) => word.startsWith(needle))
+const LIGHT_WORDS = new Set([
+  'a',
+  'an',
+  'and',
+  'da',
+  'de',
+  'do',
+  'el',
+  'feat',
+  'ft',
+  'in',
+  'la',
+  'las',
+  'los',
+  'of',
+  'on',
+  'or',
+  'the',
+  'to',
+  'vs',
+])
+
+function allowedDistance(len: number) {
+  if (len <= 3) return 0
+  if (len <= 5) return 1
+  if (len <= 9) return 2
+  return 3
+}
+
+function editDistance(a: string, b: string) {
+  if (a === b) return 0
+  const al = a.length
+  const bl = b.length
+  if (!al) return bl
+  if (!bl) return al
+  if (Math.abs(al - bl) > 4) return 99
+  const prev = new Array<number>(bl + 1)
+  const next = new Array<number>(bl + 1)
+  for (let j = 0; j <= bl; j += 1) prev[j] = j
+  for (let i = 1; i <= al; i += 1) {
+    next[0] = i
+    const code = a.charCodeAt(i - 1)
+    for (let j = 1; j <= bl; j += 1) {
+      const cost = code === b.charCodeAt(j - 1) ? 0 : 1
+      next[j] = Math.min((next[j - 1] ?? 99) + 1, (prev[j] ?? 99) + 1, (prev[j - 1] ?? 99) + cost)
+    }
+    for (let j = 0; j <= bl; j += 1) prev[j] = next[j] ?? 99
+  }
+  return prev[bl] ?? 99
+}
+
+function tokenHits(token: string, words: string[], blob: string) {
+  if (blob.includes(token)) return true
+  const allow = allowedDistance(token.length)
+  for (const word of words) {
+    if (word.startsWith(token)) return true
+    if (token.length >= 3 && word.length >= 3 && token.startsWith(word)) return true
+    if (allow > 0 && Math.abs(word.length - token.length) <= allow && editDistance(word, token) <= allow) {
+      return true
+    }
+  }
+  return false
+}
+
+export function fuzzyFits(query: string, haystack: string) {
+  const needle = normalizeGuess(query)
+  const blob = normalizeGuess(haystack)
+  if (!needle) return true
+  if (!blob) return false
+  if (blob.includes(needle)) return true
+  const words = blob.split(' ').filter(Boolean)
+  if (needle.length >= 3 && words.some((word) => word.startsWith(needle))) return true
+  const raw = needle.split(' ').filter((token) => token.length >= 2)
+  const tokens = raw.filter((token) => !LIGHT_WORDS.has(token))
+  const usable = tokens.length ? tokens : raw
+  if (!usable.length) return false
+  return usable.every((token) => tokenHits(token, words, blob))
+}
+
+function hitBlob(hit: { title: string; artist: string }) {
+  const title = normalizeGuess(hit.title)
+  const core = normalizeGuess(songCoreTitle(hit.title))
+  const artist = normalizeGuess(hit.artist)
+  return { title, core, artist, blob: `${core} ${title} ${artist}` }
 }
 
 export function guessFitsQuery(query: string, hit: { title: string; artist: string }) {
   const needle = normalizeGuess(query)
   if (needle.length < 2) return true
-  const title = normalizeGuess(hit.title)
-  const core = normalizeGuess(songCoreTitle(hit.title))
-  const artist = normalizeGuess(hit.artist)
-  if (title.includes(needle) || core.includes(needle) || artist.includes(needle)) return true
-  if (core.length >= 3 && artist.length >= 3 && needle.includes(core) && needle.includes(artist)) return true
-  const forward = `${core} ${artist}`
-  const reverse = `${artist} ${core}`
-  if (forward.includes(needle) || reverse.includes(needle)) return true
-  const tokens = needle.split(' ').filter((token) => token.length >= 2)
-  if (tokens.length < 2) return false
-  const blob = `${core} ${title} ${artist}`
-  return tokens.every((token) => blob.includes(token))
+  return suggestionFitsQuery(query, hit)
 }
 
-/** Autocomplete only: short queries match artists, not title prefixes. */
+/** Autocomplete: 2 letters match artists; from 3, titles too, including light typos. */
 export function suggestionFitsQuery(query: string, hit: { title: string; artist: string }) {
   const needle = normalizeGuess(query)
   if (needle.length < 2) return false
-  const title = normalizeGuess(hit.title)
-  const core = normalizeGuess(songCoreTitle(hit.title))
-  const artist = normalizeGuess(hit.artist)
-
-  if (artist.startsWith(needle) || wordsStartWith(artist, needle)) return true
-
-  if (needle.length < 4) return false
-  if (core.startsWith(needle) || title.startsWith(needle)) return true
-  if (wordsStartWith(core, needle) || wordsStartWith(title, needle)) return true
-  if (title.includes(needle) || core.includes(needle)) return true
-  if (core.length >= 3 && artist.length >= 3 && needle.includes(core) && needle.includes(artist)) return true
-  return `${core} ${artist}`.includes(needle) || `${artist} ${core}`.includes(needle)
+  const { title, core, artist, blob } = hitBlob(hit)
+  if (fuzzyFits(needle, artist)) return true
+  if (needle.length < 3) return false
+  return fuzzyFits(needle, core) || fuzzyFits(needle, title) || fuzzyFits(needle, blob)
 }

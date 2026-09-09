@@ -1,9 +1,10 @@
-import { deezerPlaylistTracks, type HearTrack } from '@/lib/deezer'
+import { deezerChartTracks, deezerPlaylistTracks, type HearTrack } from '@/lib/deezer'
 import { normalizeGuess, songCoreTitle, spaceArtists } from '@/lib/game'
+import { nonstopTrackKey } from '@/lib/nonstop-heard'
 
-type Lane = 'classic' | 'nineties' | 'oughts' | 'tens' | 'recent'
+type Lane = 'classic' | 'nineties' | 'oughts' | 'tens' | 'recent' | 'charts'
 
-const PLAYLISTS: Record<Lane, number[]> = {
+const PLAYLISTS: Record<Exclude<Lane, 'charts'>, number[]> = {
   classic: [620264073, 1470022445, 8877326262, 867825522, 8512471762, 1413309725],
   nineties: [878989033, 8873744282, 8027597282],
   oughts: [248297032, 1977689462, 8326097522],
@@ -11,8 +12,19 @@ const PLAYLISTS: Record<Lane, number[]> = {
   recent: [13650084141, 5310238702, 5310088722, 3453772742, 5132762464, 1283499335, 12345421311, 12345467671],
 }
 
-const CYCLE: Lane[] = ['recent', 'classic', 'tens', 'recent', 'nineties', 'oughts']
-const HEAD = 22
+const CHARTS = [0, 152, 116, 106, 85, 165]
+const TAKE: Record<Exclude<Lane, 'charts'>, number> = {
+  classic: 4,
+  nineties: 3,
+  oughts: 3,
+  tens: 4,
+  recent: 6,
+}
+
+const CYCLE: Lane[] = ['recent', 'classic', 'charts', 'tens', 'recent', 'nineties', 'oughts', 'charts']
+const SLICE = 60
+const OFFSETS = [0, 40, 80, 120, 180, 240, 320, 400]
+const QUEUE_SIZE = 48
 
 const BRAZIL_ACTS = [
   'Alok',
@@ -121,54 +133,75 @@ function pickSome<T>(list: T[], take: number) {
   return shuffle(list).slice(0, Math.min(take, list.length))
 }
 
-function trackKey(track: HearTrack) {
-  return `${normalizeGuess(songCoreTitle(track.title))}:${normalizeGuess(track.artist)}`
-}
-
 function takeNext(
   bucket: HearTrack[],
   usedTrack: Set<string>,
-  usedArtist: Set<string>,
+  usedArtist: Set<string> | null,
 ) {
   const index = bucket.findIndex((track) => {
-    return !usedTrack.has(trackKey(track)) && !usedArtist.has(normalizeGuess(track.artist))
+    if (usedTrack.has(nonstopTrackKey(track))) return false
+    if (usedArtist && usedArtist.has(normalizeGuess(track.artist))) return false
+    return true
   })
   if (index < 0) return null
   return bucket.splice(index, 1)[0] ?? null
+}
+
+async function playlistSlice(id: number) {
+  const index = pickSome(OFFSETS, 1)[0] ?? 0
+  const tracks = await deezerPlaylistTracks(id, SLICE, index)
+  if (tracks.length >= 12 || index === 0) return tracks
+  return deezerPlaylistTracks(id, SLICE, 0)
+}
+
+function emptyLanes(): Record<Lane, HearTrack[]> {
+  return {
+    classic: [],
+    nineties: [],
+    oughts: [],
+    tens: [],
+    recent: [],
+    charts: [],
+  }
 }
 
 export async function buildNonstopQueue(input: {
   favoriteIds?: string[]
   exclude?: string
   seenIds?: string[]
+  seenKeys?: string[]
 }) {
   const exclude = normalizeGuess(input.exclude ?? '')
   const seenIds = new Set(input.seenIds ?? [])
-  const sources = (Object.keys(PLAYLISTS) as Lane[]).flatMap((lane) => {
-    const take = lane === 'recent' ? 3 : 2
-    return pickSome(PLAYLISTS[lane], take).map((id) => ({ lane, id }))
+  const seenKeys = new Set(input.seenKeys ?? [])
+  const playlistSources = (Object.keys(TAKE) as Array<keyof typeof TAKE>).flatMap((lane) => {
+    return pickSome(PLAYLISTS[lane], TAKE[lane]).map((id) => ({ lane, id }))
   })
+  const chartIds = pickSome(CHARTS, 3)
 
-  const fetched = await Promise.all(
-    sources.map(async (source) => ({
-      lane: source.lane,
-      tracks: await deezerPlaylistTracks(source.id, HEAD, 0),
+  const fetched = await Promise.all([
+    ...playlistSources.map(async (source) => ({
+      lane: source.lane as Lane,
+      tracks: await playlistSlice(source.id),
     })),
-  )
+    ...chartIds.map(async (id) => ({
+      lane: 'charts' as const,
+      tracks: await deezerChartTracks(id, 50),
+    })),
+  ])
 
-  const lanes: Record<Lane, HearTrack[]> = {
-    classic: [],
-    nineties: [],
-    oughts: [],
-    tens: [],
-    recent: [],
-  }
+  const lanes = emptyLanes()
+  const catalog = new Set<string>()
 
   for (const row of fetched) {
     for (const track of row.tracks) {
-      if (seenIds.has(track.id) || isBrazilianTrack(track)) continue
+      const key = nonstopTrackKey(track)
+      if (seenIds.has(track.id) || seenKeys.has(key) || catalog.has(key) || catalog.has(track.id)) continue
+      if (isBrazilianTrack(track)) continue
       const titleKey = normalizeGuess(songCoreTitle(track.title))
       if (exclude && (titleKey === exclude || normalizeGuess(track.title) === exclude)) continue
+      catalog.add(key)
+      catalog.add(track.id)
       lanes[row.lane].push(track)
     }
   }
@@ -180,35 +213,41 @@ export async function buildNonstopQueue(input: {
   const pool: HearTrack[] = []
   const usedTrack = new Set<string>()
   const usedArtist = new Set<string>()
-  let cursor = 0
-  let idle = 0
+  let cursor = Math.floor(Math.random() * CYCLE.length)
+  const maxAttempts = QUEUE_SIZE * CYCLE.length
 
-  while (pool.length < 36 && idle < CYCLE.length * 4) {
+  for (let attempt = 0; attempt < maxAttempts && pool.length < QUEUE_SIZE; attempt += 1) {
     const lane = CYCLE[cursor % CYCLE.length]
     cursor += 1
     const track = lane ? takeNext(lanes[lane], usedTrack, usedArtist) : null
-    if (!track) {
-      idle += 1
-      continue
-    }
-    idle = 0
-    usedTrack.add(trackKey(track))
+    if (!track) continue
+    usedTrack.add(nonstopTrackKey(track))
     usedArtist.add(normalizeGuess(track.artist))
     pool.push(track)
   }
 
-  if (pool.length < 36) {
+  if (pool.length < QUEUE_SIZE) {
     const leftover = shuffle(Object.values(lanes).flat())
-    while (pool.length < 36) {
+    while (pool.length < QUEUE_SIZE) {
       const track = takeNext(leftover, usedTrack, usedArtist)
       if (!track) break
-      usedTrack.add(trackKey(track))
+      usedTrack.add(nonstopTrackKey(track))
       usedArtist.add(normalizeGuess(track.artist))
       pool.push(track)
     }
   }
 
-  return spaceArtists(pool).slice(0, 36)
+  if (pool.length < QUEUE_SIZE) {
+    const leftover = shuffle(Object.values(lanes).flat())
+    while (pool.length < QUEUE_SIZE) {
+      const track = takeNext(leftover, usedTrack, null)
+      if (!track) break
+      usedTrack.add(nonstopTrackKey(track))
+      pool.push(track)
+    }
+  }
+
+  return spaceArtists(pool).slice(0, QUEUE_SIZE)
 }
 
 export type { HearTrack }

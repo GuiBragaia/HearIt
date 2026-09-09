@@ -3,6 +3,7 @@
 import { usePathname } from 'next/navigation'
 import { PlayingProvider, usePlaying } from './playing-context'
 import { RouteMotionProvider } from './route-motion'
+import { LeaveGuardProvider } from './leave-guard'
 import { Header } from './Header'
 import { LocaleVeil } from './LocaleVeil'
 import { MobileNav } from './MobileNav'
@@ -38,7 +39,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <PlayingProvider>
       <RouteMotionProvider>
-        <ShellInner>{children}</ShellInner>
+        <LeaveGuardProvider>
+          <ShellInner>{children}</ShellInner>
+        </LeaveGuardProvider>
       </RouteMotionProvider>
     </PlayingProvider>
   )

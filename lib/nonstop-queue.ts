@@ -1,11 +1,28 @@
 import type { HearTrack } from '@/lib/deezer'
 
-export async function loadNonstopQueue(input: { favs: string[]; exclude: string; seen: string[] }) {
-  const params = new URLSearchParams()
-  if (input.exclude) params.set('exclude', input.exclude)
-  if (input.favs.length) params.set('favs', input.favs.join(','))
-  if (input.seen.length) params.set('seen', input.seen.slice(-200).join(','))
-  const response = await fetch(`/api/nonstop?${params}`, { cache: 'no-store' })
+const SEEN_CAP = 600
+
+function clip(list: string[]) {
+  return [...new Set(list.filter(Boolean))].slice(-SEEN_CAP)
+}
+
+export async function loadNonstopQueue(input: {
+  favs: string[]
+  exclude: string
+  seenIds: string[]
+  seenKeys: string[]
+}) {
+  const response = await fetch('/api/nonstop', {
+    method: 'POST',
+    cache: 'no-store',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      exclude: input.exclude,
+      favs: input.favs,
+      seenIds: clip(input.seenIds),
+      seenKeys: clip(input.seenKeys),
+    }),
+  })
   if (!response.ok) throw new Error('queue')
   const data = (await response.json()) as { tracks?: HearTrack[] }
   return data.tracks ?? []
@@ -21,8 +38,17 @@ export async function previewReady(url: string) {
   }
 }
 
-export async function prepareNonstopQueue(input: { favs: string[]; exclude: string; seen?: string[] }) {
-  const tracks = await loadNonstopQueue({ ...input, seen: input.seen ?? [] })
+export async function prepareNonstopQueue(input: {
+  favs: string[]
+  exclude: string
+  seenIds?: string[]
+  seenKeys?: string[]
+}) {
+  const tracks = await loadNonstopQueue({
+    ...input,
+    seenIds: input.seenIds ?? [],
+    seenKeys: input.seenKeys ?? [],
+  })
   const head = tracks.slice(0, 6)
   const tail = tracks.slice(6)
   const checks = await Promise.all(head.map(async (track) => ({ track, ok: await previewReady(track.previewUrl) })))

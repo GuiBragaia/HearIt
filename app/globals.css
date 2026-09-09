@@ -1784,6 +1784,133 @@ button:disabled {
   -webkit-mask-image: linear-gradient(to bottom, transparent, #000 35%, #000 65%, transparent);
 }
 
+.viewport-wave.bars {
+  display: flex;
+  align-items: center;
+  justify-content: stretch;
+  gap: 3px;
+  top: 24%;
+  right: 0;
+  bottom: auto;
+  left: 0;
+  height: 240px;
+  padding: 0 2vw;
+  opacity: 0;
+  color: var(--primary);
+  mask-image: linear-gradient(
+    to bottom,
+    transparent,
+    rgba(0, 0, 0, 0.45) 26%,
+    rgba(0, 0, 0, 0.72) 50%,
+    rgba(0, 0, 0, 0.45) 74%,
+    transparent
+  );
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent,
+    rgba(0, 0, 0, 0.45) 26%,
+    rgba(0, 0, 0, 0.72) 50%,
+    rgba(0, 0, 0, 0.45) 74%,
+    transparent
+  );
+  transition: opacity 0.7s ease;
+}
+
+.viewport-wave.bars.is-in {
+  opacity: 0.18;
+}
+
+.viewport-wave.bars.is-hot {
+  opacity: 0.3;
+}
+
+.viewport-wave.bars .bars-bloom {
+  position: absolute;
+  inset: 18% 8%;
+  background: radial-gradient(ellipse at center, rgba(200, 243, 90, 0.16), transparent 68%);
+  filter: blur(22px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.6s ease;
+}
+
+.viewport-wave.bars.is-in .bars-bloom {
+  opacity: 0.55;
+}
+
+.viewport-wave.bars.is-hot .bars-bloom {
+  opacity: 0.85;
+}
+
+.viewport-wave.bars i {
+  display: block;
+  flex: 1 1 0;
+  min-width: 0;
+  height: calc(100% * var(--eq-env, 0.7));
+  border-radius: 99px;
+  background: linear-gradient(
+    to bottom,
+    rgba(200, 243, 90, 0.08),
+    rgba(232, 247, 168, 0.72) 46%,
+    rgba(200, 243, 90, 0.72) 54%,
+    rgba(200, 243, 90, 0.08)
+  );
+  transform: scaleY(0);
+  transform-origin: center;
+  opacity: 0;
+}
+
+.viewport-wave.bars.is-in:not(.is-settled) i {
+  animation: eq-enter 0.9s var(--eq-in, 0s) cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.viewport-wave.bars.is-settled i {
+  opacity: 0.85;
+  animation: eq-wait var(--eq-wait, 2.2s) var(--eq-delay, 0s) ease-in-out infinite alternate;
+}
+
+.viewport-wave.bars.is-settled.is-hot i {
+  opacity: 1;
+  animation: eq-bar var(--eq-dur, 0.48s) var(--eq-delay, 0s) ease-in-out infinite alternate;
+}
+
+.viewport-wave.bars.is-still i {
+  animation: none !important;
+  opacity: 0.7;
+  transform: scaleY(0.16);
+}
+
+@keyframes eq-enter {
+  from {
+    opacity: 0;
+    transform: scaleY(0);
+    filter: blur(6px);
+  }
+  to {
+    opacity: 0.85;
+    transform: scaleY(0.16);
+    filter: none;
+  }
+}
+
+@keyframes eq-wait {
+  from {
+    transform: scaleY(0.12);
+  }
+  to {
+    transform: scaleY(0.2);
+  }
+}
+
+@keyframes eq-bar {
+  from {
+    transform: scaleY(0.16);
+  }
+  to {
+    transform: scaleY(var(--eq-to, 0.62));
+  }
+}
+
 .auth-screen {
   position: relative;
   display: grid;
@@ -6815,6 +6942,9 @@ span.profile-edit {
   .wave-bar,
   .wave-mirror,
   .wave-bloom,
+  .viewport-wave.bars i,
+  .viewport-wave.bars.is-hot i,
+  .viewport-wave.bars .bars-bloom,
   .feel-miss,
   .feel-hit,
   .feel-hit::before,
