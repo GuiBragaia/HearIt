@@ -163,6 +163,19 @@ export const catalog: Song[] = [
     ],
   },
   {
+    id: 'andei-so',
+    title: 'Andei Só',
+    artist: 'Natiruts',
+    deezerId: 518473662,
+    aliases: [
+      'andei so',
+      'andei só',
+      'andei so natiruts',
+      'andei só natiruts',
+      'andei sozinho',
+    ],
+  },
+  {
     id: 'killer-queen',
     title: 'Killer Queen',
     artist: 'Queen',
