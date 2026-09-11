@@ -1,11 +1,20 @@
 export function siteUrl() {
-  const explicit = process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/$/, '')
-  if (explicit) return explicit
-  const production = process.env.VERCEL_PROJECT_PRODUCTION_URL?.trim()
-  if (production) return `https://${production.replace(/^https?:\/\//, '')}`
-  const preview = process.env.VERCEL_URL?.trim()
-  if (preview) return `https://${preview.replace(/^https?:\/\//, '')}`
-  return 'http://localhost:3000'
+  return (
+    asOrigin(process.env.NEXT_PUBLIC_SITE_URL) ||
+    asOrigin(process.env.VERCEL_PROJECT_PRODUCTION_URL) ||
+    asOrigin(process.env.VERCEL_URL) ||
+    'http://localhost:3000'
+  )
+}
+
+function asOrigin(raw?: string) {
+  const value = raw?.trim().replace(/\/$/, '')
+  if (!value) return ''
+  try {
+    return new URL(/^[a-z]+:\/\//i.test(value) ? value : `https://${value}`).origin
+  } catch {
+    return ''
+  }
 }
 
 export function absoluteUrl(path = '/') {

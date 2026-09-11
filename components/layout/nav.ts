@@ -9,10 +9,11 @@ export const NAV_ITEMS = [
 
 export const ROUTE_ORDER = ['/', '/play', '/daily', '/plays', '/online', '/leaderboard', '/join', '/login', '/profile'] as const
 
-export function routeIndex(pathname: string) {
-  const exact = ROUTE_ORDER.indexOf(pathname as (typeof ROUTE_ORDER)[number])
+export function routeIndex(pathname?: string | null) {
+  const path = pathname ?? ''
+  const exact = ROUTE_ORDER.indexOf(path as (typeof ROUTE_ORDER)[number])
   if (exact >= 0) return exact
-  return ROUTE_ORDER.findIndex((route) => route !== '/' && pathname.startsWith(route))
+  return ROUTE_ORDER.findIndex((route) => route !== '/' && path.startsWith(route))
 }
 
 export function routeDirection(from: string, to: string) {

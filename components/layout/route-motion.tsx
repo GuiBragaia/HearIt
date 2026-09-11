@@ -11,7 +11,7 @@ type RouteMotionValue = {
 const RouteMotionContext = createContext<RouteMotionValue | null>(null)
 
 export function RouteMotionProvider({ children }: { children: ReactNode }) {
-  const pathname = usePathname()
+  const pathname = usePathname() ?? ''
   const prev = useRef(pathname)
   const direction = routeDirection(prev.current, pathname)
 

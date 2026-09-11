@@ -16,7 +16,7 @@ const DAILY_WEEK: Record<string, string> = {
   '2026-09-08': 'gummy-bear',
   '2026-09-09': 'toxicity',
   '2026-09-10': 'andei-so',
-  '2026-09-11': 'less-i-know',
+  '2026-09-11': 'mulher-de-fases',
   '2026-09-12': 'hey-jude',
   '2026-09-13': 'the-chain',
   '2026-09-14': 'back-in-black',

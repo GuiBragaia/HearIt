@@ -10,7 +10,7 @@ import { NAV_ITEMS } from './nav'
 import { useSession } from '@/components/auth/session-context'
 
 export function Header() {
-  const pathname = usePathname()
+  const pathname = usePathname() ?? ''
   const { t } = useI18n()
   const { user, ready } = useSession()
   const asks = user?.incoming?.length ?? 0

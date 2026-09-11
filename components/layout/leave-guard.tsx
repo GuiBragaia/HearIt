@@ -24,7 +24,7 @@ function samePlace(url: URL, pathname: string) {
 
 export function LeaveGuardProvider({ children }: { children: ReactNode }) {
   const router = useRouter()
-  const pathname = usePathname()
+  const pathname = usePathname() ?? ''
   const [armed, setArmed] = useState(false)
   const [pending, setPending] = useState<PendingLeave | null>(null)
   const armedRef = useRef(false)

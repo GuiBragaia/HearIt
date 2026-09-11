@@ -14,8 +14,19 @@ import type { DailyRun } from '@/lib/daily-run'
 import type { LeaderboardRow } from '@/lib/mock'
 import { sanitizeShownBadges, unlockedAchievements } from '@/lib/achievements'
 
-const PROFILE_COLS =
-  'id, handle, display_name, photo_url, banner_url, shown_badges, favorites, points, streak, best_streak, songs_guessed, songs_played, perfect_guesses, clutch_guesses, lightning_guesses, sum_clip, last_played_on, created_at'
+const PROFILE_BASE =
+  'id, handle, display_name, photo_url, favorites, points, streak, best_streak, songs_guessed, songs_played, perfect_guesses, clutch_guesses, lightning_guesses, sum_clip, last_played_on, created_at'
+const PROFILE_COLS = `${PROFILE_BASE}, banner_url, shown_badges`
+
+function missingProfileCol(message?: string) {
+  return /banner_url|shown_badges|does not exist|schema cache/i.test(message ?? '')
+}
+
+async function profileQuery<T>(run: (cols: string) => PromiseLike<{ data: T; error: { message?: string } | null }>) {
+  const full = await run(PROFILE_COLS)
+  if (!full.error || !missingProfileCol(full.error.message)) return full
+  return run(PROFILE_BASE)
+}
 
 type ProfileRow = {
   id: string
@@ -82,7 +93,7 @@ export function sessionFromProfile(
 export async function fetchProfileRow(id: string) {
   const db = getSupabase()
   if (!db) return null
-  const { data, error } = await db.from('profiles').select(PROFILE_COLS).eq('id', id).maybeSingle()
+  const { data, error } = await profileQuery((cols) => db.from('profiles').select(cols).eq('id', id).maybeSingle())
   if (error || !data) return null
   return data as ProfileRow
 }
@@ -91,7 +102,9 @@ export async function fetchProfileByHandle(handle: string) {
   const db = getSupabase()
   if (!db) return null
   const token = usernameFromHandle(handle)
-  const { data, error } = await db.from('profiles').select(PROFILE_COLS).eq('handle', token).maybeSingle()
+  const { data, error } = await profileQuery((cols) =>
+    db.from('profiles').select(cols).eq('handle', token).maybeSingle(),
+  )
   if (error || !data) return null
   return personFromRow(data as ProfileRow)
 }
@@ -106,7 +119,7 @@ export async function fetchPeople(ids: string[]) {
   if (!unique.length) return [] as Person[]
   const db = getSupabase()
   if (!db) return []
-  const { data, error } = await db.from('profiles').select(PROFILE_COLS).in('id', unique)
+  const { data, error } = await profileQuery((cols) => db.from('profiles').select(cols).in('id', unique))
   if (error || !data) return []
   const rows = data as ProfileRow[]
   const byId = new Map(rows.map((row) => [row.id, personFromRow(row)]))
@@ -118,9 +131,11 @@ export async function searchPeople(query: string, exceptId?: string) {
   if (!db) return [] as Person[]
   const token = query.replace(/[^a-z0-9_ ]/gi, '').trim().slice(0, 24)
   if (token.length < 2) return []
-  let request = db.from('profiles').select(PROFILE_COLS).or(`handle.ilike.%${token}%,display_name.ilike.%${token}%`).limit(12)
-  if (exceptId) request = request.neq('id', exceptId)
-  const { data, error } = await request
+  const { data, error } = await profileQuery((cols) => {
+    let request = db.from('profiles').select(cols).or(`handle.ilike.%${token}%,display_name.ilike.%${token}%`).limit(12)
+    if (exceptId) request = request.neq('id', exceptId)
+    return request
+  })
   if (error || !data) return []
   return (data as ProfileRow[]).map(personFromRow)
 }
@@ -230,7 +245,9 @@ export async function patchProfile(
 ) {
   const db = getSupabase()
   if (!db) return null
-  const { data, error } = await db.from('profiles').update(patch).eq('id', userId).select(PROFILE_COLS).maybeSingle()
+  const { data, error } = await profileQuery((cols) =>
+    db.from('profiles').update(patch).eq('id', userId).select(cols).maybeSingle(),
+  )
   if (error || !data) return null
   return data as ProfileRow
 }
@@ -595,10 +612,12 @@ export async function loadLeaderboard(
   }
 
   if (range === 'all') {
-    let query = db.from('profiles').select(PROFILE_COLS).gt('points', 0).order('points', { ascending: false })
-    if (userIds) query = query.in('id', userIds)
-    else query = query.limit(BOARD_SIZE)
-    const { data, error } = await query
+    const { data, error } = await profileQuery((cols) => {
+      let query = db.from('profiles').select(cols).gt('points', 0).order('points', { ascending: false })
+      if (userIds) query = query.in('id', userIds)
+      else query = query.limit(BOARD_SIZE)
+      return query
+    })
     if (error || !data) return empty
     const top = data as ProfileRow[]
     const rows = top.map((row, index) => {

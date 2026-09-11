@@ -17,7 +17,7 @@ const ITEMS = [
 ]
 
 export function MobileNav() {
-  const pathname = usePathname()
+  const pathname = usePathname() ?? ''
   const { t } = useI18n()
   const { user } = useSession()
   const asks = user?.incoming?.length ?? 0

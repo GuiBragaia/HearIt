@@ -10,7 +10,7 @@ import { MobileNav } from './MobileNav'
 import { cn } from '@/lib/utils'
 
 function ShellInner({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname()
+  const pathname = usePathname() ?? ''
   const { playing, feel } = usePlaying()
   const isBare = pathname === '/' || pathname.startsWith('/auth/')
 
