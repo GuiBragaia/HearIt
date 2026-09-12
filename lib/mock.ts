@@ -72,6 +72,18 @@ export const catalog: Song[] = [
       'raimundos mulher de fases',
     ],
   },
+  {
+    id: 'serenata-existencialista',
+    title: 'Serenata Existencialista',
+    artist: 'O Grilo',
+    deezerId: 437561702,
+    aliases: [
+      'serenata existencialista',
+      'serenata existencialista o grilo',
+      'o grilo serenata existencialista',
+      'serenata existencial',
+    ],
+  },
   { id: 'somebody-else', title: 'Somebody Else', artist: 'The 1975', aliases: [] },
   { id: 'levitating', title: 'Levitating', artist: 'Dua Lipa', aliases: [] },
   { id: 'bad-habit', title: 'Bad Habit', artist: 'Steve Lacy', aliases: [] },
