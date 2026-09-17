@@ -22,6 +22,20 @@ const DAILY_WEEK: Record<string, string> = {
   '2026-09-14': 'back-in-black',
   '2026-09-15': 'alright',
   '2026-09-16': 'bye-bye-bye',
+  '2026-09-17': 'judas',
+  '2026-09-18': 'borboletas',
+  '2026-09-19': 'night-fever',
+  '2026-09-20': 'dont-stop-the-music',
+  '2026-09-21': 'glamorous',
+  '2026-09-22': 'metamorfose-ambulante',
+  '2026-09-23': 'aluga-se',
+  '2026-09-24': 'duality',
+  '2026-09-25': 'break-stuff',
+  '2026-09-26': 'rock-that-body',
+  '2026-09-27': 'rhinestone-eyes',
+  '2026-09-28': 'like-him',
+  '2026-09-29': 'blue-da-ba-dee',
+  '2026-09-30': 'welcome-to-the-jungle',
 }
 
 function songByCatalogId(id?: string) {
